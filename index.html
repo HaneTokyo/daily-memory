@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Daily Memory">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Daily Memory — 毎日あそぶ記憶ゲーム</title>
+<style>
+:root{
+  --bg:#0d1220; --bg2:#131a2e; --card:#1b2440; --card2:#222d52;
+  --text:#eef2ff; --sub:#8b96b8; --accent:#6c8cff; --accent2:#9b6cff;
+  --good:#2dd4a0; --bad:#ff5d7a; --gold:#ffcf5c;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  --radius:18px;
+}
+[data-theme="light"]{
+  --bg:#f2f5fc; --bg2:#ffffff; --card:#ffffff; --card2:#eef2fb;
+  --text:#1b2340; --sub:#66708f; --shadow:0 10px 24px rgba(30,50,120,.12);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text); min-height:100dvh; overflow-x:hidden;
+  transition:background .3s,color .3s;
+}
+/* ふわふわ動くカラフルな背景（上品に、うっすらと） */
+body::before, body::after{
+  content:""; position:fixed; width:60vmax; height:60vmax; border-radius:50%;
+  filter:blur(80px); opacity:.22; z-index:-1; pointer-events:none;
+}
+body::before{
+  background:radial-gradient(circle, #6c8cff, transparent 65%);
+  top:-25vmax; right:-18vmax; animation:blob1 22s ease-in-out infinite alternate;
+}
+body::after{
+  background:radial-gradient(circle, #ff8cc8, transparent 65%);
+  bottom:-28vmax; left:-20vmax; animation:blob2 26s ease-in-out infinite alternate;
+}
+@keyframes blob1{to{transform:translate(-8vmax,6vmax) scale(1.15)}}
+@keyframes blob2{to{transform:translate(7vmax,-5vmax) scale(1.1)}}
+.screen{display:none; max-width:560px; margin:0 auto; padding:20px 18px 40px; min-height:100dvh;}
+.screen.active{display:block; animation:fadeUp .35s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ---------- Header ---------- */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.logo{font-size:22px;font-weight:800;letter-spacing:.5px;}
+.logo span{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.logo small{display:block;font-size:11px;font-weight:600;color:var(--sub);letter-spacing:2px;}
+.iconbtns{display:flex;gap:8px;}
+.iconbtn{width:40px;height:40px;border-radius:12px;border:none;background:var(--card);color:var(--text);
+  font-size:18px;cursor:pointer;box-shadow:var(--shadow);transition:transform .15s;}
+.iconbtn:active{transform:scale(.92) rotate(-8deg);}
+.iconbtn:hover{transform:scale(1.06) rotate(-5deg);}
+.greeting{margin:-8px 0 16px;color:var(--sub);font-size:14px;font-weight:700;}
+.logo .brain{display:inline-block;animation:bounce 2.4s ease-in-out infinite;}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px) rotate(-6deg)}}
+
+/* ---------- Stats bar ---------- */
+.statsbar{display:flex;gap:10px;margin-bottom:20px;}
+.stat{flex:1;background:var(--card);border-radius:var(--radius);padding:12px;text-align:center;box-shadow:var(--shadow);}
+.stat b{font-size:20px;display:block;}
+.stat span{font-size:11px;color:var(--sub);}
+
+/* ---------- Deck cards ---------- */
+.deckgrid{display:flex;flex-direction:column;gap:14px;}
+.deck{background:var(--card);border-radius:var(--radius);padding:16px;display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);cursor:pointer;transition:transform .15s;position:relative;border:1px solid rgba(255,255,255,.05);}
+.deck:active{transform:scale(.98);}
+.deck:hover{transform:translateY(-3px) rotate(-.3deg);}
+.deck .emoji{width:54px;height:54px;border-radius:16px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;}
+/* デッキごとに違う色味のエモジタイルで遊び心を */
+.deck:nth-child(5n+1) .emoji{background:linear-gradient(135deg,rgba(108,140,255,.35),rgba(108,220,255,.2));}
+.deck:nth-child(5n+2) .emoji{background:linear-gradient(135deg,rgba(255,140,200,.35),rgba(255,180,120,.2));}
+.deck:nth-child(5n+3) .emoji{background:linear-gradient(135deg,rgba(255,207,92,.35),rgba(255,140,90,.2));}
+.deck:nth-child(5n+4) .emoji{background:linear-gradient(135deg,rgba(45,212,160,.35),rgba(108,220,255,.2));}
+.deck:nth-child(5n+5) .emoji{background:linear-gradient(135deg,rgba(155,108,255,.35),rgba(255,140,200,.2));}
+.deck .info{flex:1;min-width:0;}
+.deck .info h3{margin:0 0 3px;font-size:16px;}
+.deck .info p{margin:0;font-size:12px;color:var(--sub);}
+.badge{background:var(--bad);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;}
+.badge.new{background:var(--accent);}
+.playbtn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:12px;
+  padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;transition:transform .15s;}
+.playbtn:active{transform:scale(.93);}
+.addDeck{border:2px dashed var(--sub);background:transparent;border-radius:var(--radius);padding:16px;
+  color:var(--sub);font-size:15px;font-weight:600;cursor:pointer;width:100%;}
+
+/* ---------- Game ---------- */
+.gametop{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.quitbtn{background:var(--card);border:none;color:var(--sub);width:36px;height:36px;border-radius:10px;font-size:16px;cursor:pointer;}
+.progresswrap{flex:1;height:10px;background:var(--card);border-radius:99px;overflow:hidden;}
+.progressbar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .4s ease;}
+.gamestats{display:flex;justify-content:space-between;font-size:13px;color:var(--sub);margin-bottom:16px;font-weight:600;}
+.gamestats .combo{color:var(--gold);}
+.qcard{background:linear-gradient(160deg,var(--card),var(--card2));border-radius:22px;min-height:170px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;
+  box-shadow:var(--shadow);margin-bottom:10px;position:relative;border:1px solid rgba(255,255,255,.07);cursor:pointer;}
+.qcard .qtext{font-size:34px;font-weight:800;text-align:center;word-break:break-word;line-height:1.3;}
+.qcard .hint{font-size:11px;color:var(--sub);}
+.qcard .speaker{position:absolute;top:12px;right:14px;font-size:18px;opacity:.7;}
+.qcard.slidein{animation:slideIn .3s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateX(50px) rotate(2deg)}to{opacity:1;transform:none}}
+.timerline{height:4px;border-radius:99px;background:var(--card);overflow:hidden;margin:0 8px 16px;}
+.timerfill{height:100%;background:var(--gold);width:100%;}
+.choices{display:flex;flex-direction:column;gap:12px;}
+.choice{background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;
+  font-size:19px;font-weight:700;color:var(--text);cursor:pointer;text-align:center;box-shadow:var(--shadow);
+  transition:transform .12s;word-break:break-word;}
+.choice:active{transform:scale(.97);}
+.choice.correct{background:var(--good);color:#04281d;border-color:var(--good);animation:pop .35s ease;}
+.choice.wrong{background:var(--bad);color:#fff;border-color:var(--bad);animation:shake .4s ease;}
+.choice.reveal{background:var(--good);color:#04281d;border-color:var(--good);}
+.choice:disabled{cursor:default;}
+@keyframes pop{40%{transform:scale(1.06)}}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.feedback{text-align:center;height:28px;margin-top:14px;font-size:16px;font-weight:800;}
+.feedback .fast{color:var(--gold);}
+.feedback .good{color:var(--good);}
+.feedback .bad{color:var(--bad);}
+@keyframes floatUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-18px)}}
+.feedback span{display:inline-block;animation:floatUp 1s ease forwards;}
+.drill-pair{text-align:center;font-size:28px;font-weight:800;padding:10px 6px;word-break:break-word;}
+.drill-pair.pulse{animation:pop .5s ease;}
+.wpart{transition:color .35s ease, opacity .35s ease;}
+.drill-ex{text-align:center;padding:2px 10px 10px;line-height:1.6;}
+.drill-ex .en{font-size:17px;font-weight:600;}
+.drill-ex .en mark{background:none;color:var(--accent);font-weight:800;}
+.drill-ex .ja{font-size:13px;color:var(--sub);margin-top:2px;}
+
+/* ---------- Result ---------- */
+.resulthero{text-align:center;padding:30px 0 10px;}
+.resulthero .big{font-size:56px;}
+.resulthero h2{margin:8px 0 4px;font-size:26px;}
+.resulthero p{color:var(--sub);margin:0;font-size:14px;}
+.resultgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0;}
+.rstat{background:var(--card);border-radius:var(--radius);padding:16px;text-align:center;box-shadow:var(--shadow);}
+.rstat b{font-size:24px;display:block;}
+.rstat span{font-size:11px;color:var(--sub);}
+.cardresults{display:flex;flex-direction:column;gap:8px;margin-bottom:24px;}
+.cres{background:var(--card);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:14px;}
+.cres .t{color:var(--sub);font-size:12px;}
+.bigbtn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;
+  border-radius:16px;padding:17px;font-size:17px;font-weight:800;cursor:pointer;margin-bottom:10px;transition:transform .15s;}
+.bigbtn:active{transform:scale(.97);}
+.bigbtn.ghost{background:var(--card);color:var(--text);}
+
+/* ---------- Modals ---------- */
+.modal{position:fixed;inset:0;background:rgba(5,8,18,.6);backdrop-filter:blur(4px);display:none;
+  align-items:flex-end;justify-content:center;z-index:50;}
+.modal.open{display:flex;}
+.sheet{background:var(--bg2);border-radius:24px 24px 0 0;width:100%;max-width:560px;max-height:88dvh;
+  overflow-y:auto;padding:22px 20px 34px;animation:sheetUp .3s ease;}
+@keyframes sheetUp{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
+.sheet h2{margin:0 0 4px;font-size:20px;}
+.sheet .desc{color:var(--sub);font-size:13px;margin:0 0 16px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px;}
+.field input[type=text],.field input[type=password],.field textarea{
+  width:100%;background:var(--card2);border:1px solid rgba(128,140,180,.25);border-radius:12px;
+  padding:12px;color:var(--text);font-size:15px;font-family:inherit;}
+.field textarea{min-height:120px;resize:vertical;}
+.row{display:flex;gap:10px;}
+.row .bigbtn{flex:1;margin-bottom:0;font-size:15px;padding:14px;}
+.toggle{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid rgba(128,140,180,.15);}
+.toggle .lbl b{font-size:15px;display:block;}
+.toggle .lbl span{font-size:12px;color:var(--sub);}
+.switch{width:52px;height:30px;border-radius:99px;background:var(--card2);border:none;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+.switch.on{background:var(--good);}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s;}
+.switch.on::after{left:25px;}
+.cardlist{display:flex;flex-direction:column;gap:8px;margin:14px 0;}
+.citem{background:var(--card2);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:14px;}
+.citem .qa{flex:1;min-width:0;}
+.citem .qa b{display:block;}
+.citem .qa span{color:var(--sub);font-size:12px;}
+.citem button{background:none;border:none;color:var(--bad);font-size:16px;cursor:pointer;}
+.spinner{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-4px;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.notice{font-size:12px;color:var(--sub);background:var(--card2);border-radius:10px;padding:10px 12px;margin-top:10px;line-height:1.5;}
+.err{color:var(--bad);font-size:13px;margin-top:8px;font-weight:600;}
+
+/* ---------- Capture (screenshot import) ---------- */
+.dropzone{border:2px dashed rgba(128,140,180,.5);border-radius:16px;padding:26px 16px;text-align:center;
+  color:var(--sub);font-size:14px;cursor:pointer;background:var(--card2);transition:border-color .2s;line-height:1.7;}
+.dropzone.drag{border-color:var(--accent);color:var(--accent);}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;}
+.thumb{position:relative;}
+.thumb img{width:84px;height:84px;object-fit:cover;border-radius:12px;border:1px solid rgba(128,140,180,.3);}
+.thumb button{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;
+  background:var(--bad);color:#fff;font-size:12px;cursor:pointer;line-height:1;}
+.field select{width:100%;background:var(--card2);border:1px solid rgba(128,140,180,.25);border-radius:12px;
+  padding:12px;color:var(--text);font-size:15px;font-family:inherit;}
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{background:var(--card2);border:1px solid rgba(128,140,180,.25);border-radius:99px;
+  padding:8px 14px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;transition:transform .12s;}
+.chip:active{transform:scale(.94);}
+
+/* ---------- Visual learning ---------- */
+.vgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0;}
+.vgrid img{width:100%;height:140px;object-fit:cover;border-radius:14px;cursor:pointer;
+  border:1px solid rgba(128,140,180,.25);transition:transform .15s;background:var(--card2);}
+.vgrid img:active{transform:scale(.97);}
+.vgrid img.big{grid-column:1/-1;height:auto;max-height:60dvh;object-fit:contain;}
+.vbtn{background:var(--card2);border:none;border-radius:10px;padding:7px 10px;font-size:15px;cursor:pointer;flex-shrink:0;}
+#yg-wrap{border-radius:16px;overflow:hidden;background:var(--card2);padding:6px;}
+.yg-credit{font-size:11px;color:var(--sub);text-align:right;margin:6px 4px 2px;}
+.yg-credit a{color:var(--sub);}
+
+/* ---------- BGM mini player ---------- */
+#bgm{position:fixed;right:14px;bottom:14px;width:250px;height:141px;z-index:40;
+  border-radius:16px;overflow:hidden;box-shadow:0 14px 40px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.12);}
+#bgm-frame,#bgm-frame iframe{width:100%;height:100%;}
+#bgm-close{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;
+  background:rgba(0,0,0,.65);color:#fff;font-size:13px;cursor:pointer;z-index:2;}
+
+/* ---------- Confetti ---------- */
+.confetti{position:fixed;top:-20px;font-size:20px;z-index:99;pointer-events:none;animation:cfall linear forwards;}
+@keyframes cfall{to{transform:translateY(110dvh) rotate(720deg);opacity:.6;}}
+</style>
+</head>
+<body>
+
+<!-- ============ HOME ============ -->
+<div class="screen active" id="scr-home">
+  <div class="top">
+    <div class="logo"><span class="brain">🧠</span> Daily <span>Memory</span><small>PLAY & REMEMBER, EVERY DAY</small></div>
+    <div class="iconbtns">
+      <button class="iconbtn" id="btn-bgm" title="BGM">🎵</button>
+      <button class="iconbtn" id="btn-theme" title="テーマ切替">🌗</button>
+      <button class="iconbtn" id="btn-settings" title="設定">⚙️</button>
+    </div>
+  </div>
+  <p class="greeting" id="greeting"></p>
+  <div class="statsbar">
+    <div class="stat"><b id="st-streak">0</b><span>連続日数 🔥</span></div>
+    <div class="stat"><b id="st-learned">0</b><span>習得カード</span></div>
+    <div class="stat"><b id="st-due">0</b><span>今日の復習</span></div>
+  </div>
+  <button class="bigbtn" id="btn-free" style="margin-bottom:16px">🎯 フリー学習 — 今日覚えたい分野から単語を抽出</button>
+  <div class="deckgrid" id="deckgrid"></div>
+  <div style="height:14px"></div>
+  <button class="bigbtn" id="btn-capture">📷 スクショから単語を取り込む</button>
+  <button class="addDeck" id="btn-adddeck">＋ 新しいデッキを作る（AI生成対応）</button>
+</div>
+
+<!-- ============ GAME ============ -->
+<div class="screen" id="scr-game">
+  <div class="gametop">
+    <button class="quitbtn" id="btn-quit">✕</button>
+    <div class="progresswrap"><div class="progressbar" id="gprogress"></div></div>
+  </div>
+  <div class="gamestats">
+    <span>SCORE <b id="gscore">0</b></span>
+    <span class="combo" id="gcombo"></span>
+    <span id="gtimer">0.0s</span>
+  </div>
+  <div class="qcard" id="qcard">
+    <div class="speaker" id="qspeaker">🔊</div>
+    <div class="qtext" id="qtext"></div>
+    <div class="hint">カードをタップで読み上げ</div>
+  </div>
+  <div class="timerline"><div class="timerfill" id="timerfill"></div></div>
+  <div class="choices" id="choices"></div>
+  <div class="feedback" id="feedback"></div>
+  <div id="drill" style="display:none">
+    <p id="drill-count" style="text-align:center;color:var(--sub);font-size:13px;font-weight:700;margin:14px 0 6px"></p>
+    <div class="drill-pair" id="drill-pair">
+      <span id="drill-a"></span><span style="color:var(--sub)"> → </span><span id="drill-q" style="color:var(--accent)"></span>
+    </div>
+    <p id="drill-parts" style="text-align:center;color:var(--sub);font-size:14px;font-weight:700;letter-spacing:1px;margin:2px 0 8px"></p>
+    <div class="drill-ex" id="drill-ex"></div>
+    <div class="row">
+      <button class="bigbtn ghost" id="drill-visual">🎬 動画で覚える</button>
+      <button class="bigbtn ghost" id="drill-skip">スキップ →</button>
+    </div>
+  </div>
+  <div id="knowask" style="display:none">
+    <p style="text-align:center;font-weight:800;margin:16px 0 10px">⚡ 即答！この単語は…</p>
+    <div class="row">
+      <button class="bigbtn ghost" id="ka-knew">😎 知ってた<br><small style="font-weight:400">もう出題しません</small></button>
+      <button class="bigbtn" id="ka-new">🤔 知らなかった<br><small style="font-weight:400">あとで再確認</small></button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RESULT ============ -->
+<div class="screen" id="scr-result">
+  <div class="resulthero">
+    <div class="big" id="r-emoji">🏆</div>
+    <h2 id="r-title">クリア！</h2>
+    <p id="r-sub"></p>
+  </div>
+  <div class="resultgrid">
+    <div class="rstat"><b id="r-score">0</b><span>スコア</span></div>
+    <div class="rstat"><b id="r-acc">0%</b><span>正答率</span></div>
+    <div class="rstat"><b id="r-avg">0s</b><span>平均反応速度</span></div>
+    <div class="rstat"><b id="r-best">0s</b><span>最速タイム ⚡</span></div>
+  </div>
+  <div class="cardresults" id="r-cards"></div>
+  <button class="bigbtn" id="btn-strengthen" style="display:none">🧠 記憶強化モード — 間違えた単語を画像と動画で</button>
+  <button class="bigbtn" id="btn-again">▶ 続けて次のカードへ</button>
+  <button class="bigbtn ghost" id="btn-home">ホームに戻る</button>
+</div>
+
+<!-- ============ BGM mini player ============ -->
+<div id="bgm" style="display:none">
+  <div id="bgm-frame"></div>
+  <button id="bgm-close">✕</button>
+</div>
+
+<!-- ============ MODAL: new deck ============ -->
+<div class="modal" id="m-newdeck">
+  <div class="sheet">
+    <h2>新しいデッキ</h2>
+    <p class="desc">覚えたい内容を貼り付けてください。AIが暗記カードに変換します。</p>
+    <div class="field"><label>デッキ名</label><input type="text" id="nd-name" placeholder="例: TOEIC英単語"></div>
+    <div class="field"><label>内容（自由テキスト or 「問題:答え」を1行ずつ）</label>
+      <textarea id="nd-text" placeholder="例1（自由テキスト・AI生成用）:&#10;光合成は植物が光エネルギーで水と二酸化炭素から糖を作る反応…&#10;&#10;例2（1行1カード）:&#10;tree : 木&#10;dog : 犬"></textarea></div>
+    <div class="row">
+      <button class="bigbtn" id="nd-ai">✨ AIで自動生成</button>
+      <button class="bigbtn ghost" id="nd-manual">行から作成</button>
+    </div>
+    <div class="err" id="nd-err"></div>
+    <div class="notice">✨AI生成には設定画面でAnthropic APIキーの登録が必要です。「行から作成」はキー不要（区切り: 「:」「,」「タブ」「＝」）。</div>
+    <div style="height:10px"></div>
+    <button class="bigbtn ghost" data-close>閉じる</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: deck detail ============ -->
+<div class="modal" id="m-deck">
+  <div class="sheet">
+    <h2 id="dd-title">デッキ</h2>
+    <p class="desc" id="dd-desc"></p>
+    <button class="bigbtn" id="dd-play">▶ Speedで遊ぶ</button>
+    <div class="cardlist" id="dd-cards"></div>
+    <div class="row">
+      <button class="bigbtn ghost" id="dd-addcard">＋ カード追加</button>
+      <button class="bigbtn ghost" id="dd-delete" style="color:var(--bad)">デッキ削除</button>
+    </div>
+    <div style="height:10px"></div>
+    <button class="bigbtn ghost" data-close>閉じる</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: free learning ============ -->
+<div class="modal" id="m-free">
+  <div class="sheet">
+    <h2>🎯 フリー学習</h2>
+    <p class="desc">今日覚えたい分野を入れると、AIが単語を抽出してすぐ遊べます。</p>
+    <div class="field"><label>分野・テーマ（自由入力）</label>
+      <input type="text" id="nf-topic" placeholder="例: ビジネス会話、空港で使う英語、ワインの用語…"></div>
+    <div class="chips" id="nf-chips"></div>
+    <div class="field" style="margin-top:14px"><label>レベル</label>
+      <select id="nf-level">
+        <option value="easy">やさしい（中学〜高校レベル）</option>
+        <option value="normal" selected>ふつう（大学・TOEICレベル）</option>
+        <option value="hard">むずかしい（英検1級・ネイティブレベル）</option>
+      </select></div>
+    <button class="bigbtn" id="nf-go">✨ 単語を抽出してあそぶ</button>
+    <div class="err" id="nf-err"></div>
+    <div class="notice">同じ分野でもう一度生成すると、前回と重複しない新しい単語が同じデッキに追加されます。（要APIキー）</div>
+    <div style="height:10px"></div>
+    <button class="bigbtn ghost" data-close>閉じる</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: capture ============ -->
+<div class="modal" id="m-capture">
+  <div class="sheet">
+    <h2>📷 スクショから取り込み</h2>
+    <p class="desc">知らない単語が写った画面キャプチャを貼り付けるだけ。入力は不要です。</p>
+    <div class="dropzone" id="cap-drop">ここをタップして画像を選択<br>（PCなら Ctrl/Cmd+V で貼り付け・ドラッグ&ドロップもOK）</div>
+    <input type="file" id="cap-file" accept="image/*" multiple style="display:none">
+    <div class="thumbs" id="cap-thumbs"></div>
+    <div class="field"><label>追加先デッキ</label><select id="cap-deck"></select></div>
+    <button class="bigbtn" id="cap-extract">✨ AIで単語を抽出</button>
+    <div class="err" id="cap-err"></div>
+    <div class="cardlist" id="cap-preview"></div>
+    <button class="bigbtn" id="cap-add" style="display:none">このカードをデッキに追加</button>
+    <div class="notice">画像はClaude APIに直接送信され、単語と意味のカードに変換されます（設定でAPIキーの登録が必要）。</div>
+    <div style="height:10px"></div>
+    <button class="bigbtn ghost" data-close>閉じる</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: visual learning ============ -->
+<div class="modal" id="m-visual">
+  <div class="sheet">
+    <h2 id="v-word"></h2>
+    <p class="desc" id="v-meaning"></p>
+    <div class="drill-ex" id="v-ex" style="text-align:left;padding:0 0 10px"></div>
+    <div id="yg-wrap">
+      <div id="yg-widget"></div>
+      <p class="yg-credit">Powered by <a href="https://youglish.com" target="_blank">YouGlish.com</a> ／ 単語の<b>5秒前</b>から自動再生・「▶|」で次の実例へ</p>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="bigbtn ghost" id="v-speak">🔊 発音</button>
+      <button class="bigbtn ghost" id="v-youtube">🎞️ セリフ動画</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="bigbtn ghost" id="v-loadimg">🖼️ 画像を表示</button>
+      <button class="bigbtn ghost" id="v-google">🌐 Google画像</button>
+    </div>
+    <div class="notice" id="v-status" style="display:none"></div>
+    <div class="vgrid" id="v-grid"></div>
+    <div style="height:10px"></div>
+    <button class="bigbtn" id="v-next" style="display:none">次の単語 →</button>
+    <button class="bigbtn ghost" data-close>閉じる</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: settings ============ -->
+<div class="modal" id="m-settings">
+  <div class="sheet">
+    <h2>設定</h2>
+    <p class="desc">学習体験をカスタマイズ</p>
+    <div class="toggle"><div class="lbl"><b>音声読み上げ</b><span>問題カードを自動で読み上げ</span></div><button class="switch" id="sw-voice"></button></div>
+    <div class="toggle"><div class="lbl"><b>効果音</b><span>正解・不正解のサウンド</span></div><button class="switch" id="sw-sound"></button></div>
+    <div style="height:16px"></div>
+    <div class="field"><label>Anthropic APIキー（AIカード生成用・この端末にのみ保存）</label>
+      <input type="password" id="set-apikey" placeholder="sk-ant-..."></div>
+    <div class="field"><label>🎵 BGM — 好きな曲・プレイリストのYouTube URL</label>
+      <input type="text" id="set-bgm" placeholder="https://www.youtube.com/watch?v=... または playlist URL"></div>
+    <div class="row">
+      <button class="bigbtn ghost" id="btn-export">データ書き出し</button>
+      <button class="bigbtn ghost" id="btn-import">読み込み</button>
+    </div>
+    <input type="file" id="importfile" accept=".json" style="display:none">
+    <div style="height:10px"></div>
+    <button class="bigbtn" data-close>保存して閉じる</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================================================================
+   Daily Memory — 毎日あそぶ記憶ゲーム
+   Core algorithm (inspired by neu.Tutor):
+   - 1 question card + 3 choice cards, tap the correct one
+   - wrong  -> reveal answer, same question repeats IMMEDIATELY (new distractors)
+   - right  -> card returns after 2 cards -> then 4 -> then 8 -> graduated
+   Modern additions: long-term SRS scheduling, AI card generation,
+   text-to-speech, score/combo, dark mode.
+================================================================ */
+
+/* ---------------- Storage ---------------- */
+const LS_KEY = "dailyMemory.v1";
+const LS_KEY_OLD = "neuTutorNext.v1";   // 旧名からの引き継ぎ
+function loadState(){
+  try{
+    let s = JSON.parse(localStorage.getItem(LS_KEY));
+    if(!s) s = JSON.parse(localStorage.getItem(LS_KEY_OLD));   // 旧データを移行
+    if(s && s.decks) return s;
+  }catch(e){}
+  return null;
+}
+const state = loadState() || {
+  decks: builtinDecks(),
+  progress: {},                    // "deckId|cardId" -> {ease, ivl, due, reps, best}
+  settings: {voice:true, sound:true, theme:"dark", apiKey:""},
+  streak: {last:"", count:0}
+};
+if(!state.decks.length) state.decks = builtinDecks();
+// 追加・更新されたビルトインデッキを既存ユーザーにも反映（例文などを最新化）
+builtinDecks().forEach(bd=>{
+  const cur = state.decks.find(d=>d.id===bd.id);
+  if(!cur){ state.decks.push(bd); return; }
+  bd.cards.forEach(bc=>{
+    const cc = cur.cards.find(c=>c.id===bc.id);
+    if(cc) Object.assign(cc, bc);
+    else cur.cards.push(bc);
+  });
+});
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ---------------- Built-in decks ---------------- */
+function builtinDecks(){
+  const mk = (id,name,emoji,pairs)=>({id,name,emoji,builtin:true,
+    cards:pairs.map((p,i)=>({id:id+"-"+i,q:p[0],a:p[1],cat:p[2]||null,ex:p[3]||null,exJa:p[4]||null,parts:p[5]||null}))});
+  return [
+    mk("en-basic","英単語 きほん","🌱",[
+      ["tree","木","n","A bird is singing in the tree.","鳥が木の上でさえずっている。"],
+      ["dog","犬","n","My dog runs very fast.","うちの犬はとても速く走る。"],
+      ["water","水","n","Can I have a glass of water?","水を一杯もらえますか。"],
+      ["mountain","山","n","We climbed the mountain last summer.","去年の夏、その山に登った。"],
+      ["river","川","n","The river flows into the sea.","その川は海に流れ込む。"],
+      ["book","本","n","She is reading a book in bed.","彼女はベッドで本を読んでいる。"],
+      ["moon","月","n","The moon is bright tonight.","今夜は月が明るい。"],
+      ["sun","太陽","n","The sun rises in the east.","太陽は東から昇る。"],
+      ["flower","花","n","This flower smells sweet.","この花は甘い香りがする。"],
+      ["bird","鳥","n","A bird flew over the house.","鳥が家の上を飛んでいった。"],
+      ["fish","魚","n","There are many fish in this lake.","この湖には魚がたくさんいる。"],
+      ["rain","雨","n","The rain stopped at noon.","雨は正午にやんだ。"]]),
+    mk("en-step","英単語 ステップアップ","🚀",[
+      ["achieve","達成する","v","She achieved her goal at last.","彼女はついに目標を達成した。",["a","chieve"]],
+      ["curious","好奇心の強い","adj","Children are curious about everything.","子どもは何にでも好奇心を持つ。",["curi","ous"]],
+      ["decline","断る","v","He declined the invitation politely.","彼は丁寧に招待を断った。",["de","cline"]],
+      ["obvious","明らかな","adj","It is obvious that he is tired.","彼が疲れているのは明らかだ。",["ob","vi","ous"]],
+      ["expand","拡大する","v","The company plans to expand overseas.","その会社は海外に拡大する計画だ。",["ex","pand"]],
+      ["precise","正確な","adj","Give me the precise time, please.","正確な時間を教えてください。",["pre","cise"]],
+      ["demand","要求する","v","They demanded an explanation.","彼らは説明を要求した。",["de","mand"]],
+      ["brief","短い","adj","He gave a brief speech.","彼は短いスピーチをした。"],
+      ["rely","頼る","v","You can rely on her.","彼女は頼りになる。",["re","ly"]],
+      ["estimate","見積もる","v","We estimated the cost at one hundred dollars.","費用を100ドルと見積もった。",["estim","ate"]],
+      ["avoid","避ける","v","Avoid eating too much at night.","夜の食べ過ぎは避けなさい。",["a","void"]],
+      ["suggest","提案する","v","I suggest taking a short break.","少し休憩することを提案します。",["sug","gest"]]]),
+    mk("en-eiken1","英検1級 チャレンジ","🎓",[
+      ["alleviate","和らげる","v","This medicine will alleviate the pain.","この薬が痛みを和らげてくれる。",["al","levi","ate"]],
+      ["capitulate","降伏する","v","The army finally capitulated to the enemy.","軍はついに敵に降伏した。",["capit","ul","ate"]],
+      ["corroborate","裏付ける","v","The evidence corroborates her story.","証拠が彼女の話を裏付けている。",["cor","robor","ate"]],
+      ["disseminate","広める","v","The internet disseminates information quickly.","インターネットは情報を素早く広める。",["dis","semin","ate"]],
+      ["extol","絶賛する","v","Critics extolled the virtues of the film.","批評家たちはその映画の美点を絶賛した。",["ex","tol"]],
+      ["obliterate","完全に破壊する","v","The earthquake obliterated the village.","地震が村を完全に破壊した。",["ob","liter","ate"]],
+      ["scrutinize","精査する","v","Auditors scrutinized the company's accounts.","監査人が会社の帳簿を精査した。",["scrutin","ize"]],
+      ["vindicate","潔白を証明する","v","The new evidence vindicated him.","新しい証拠が彼の潔白を証明した。",["vindic","ate"]],
+      ["ubiquitous","至る所にある","adj","Smartphones are ubiquitous these days.","近頃スマートフォンは至る所にある。",["ubi","quit","ous"]],
+      ["ephemeral","つかの間の","adj","Fame is often ephemeral.","名声はつかの間であることが多い。",["ep","hemer","al"]],
+      ["meticulous","細部まで気を配る","adj","She is meticulous about details.","彼女は細部まで気を配る。",["metic","ul","ous"]],
+      ["clandestine","秘密の","adj","They held a clandestine meeting.","彼らは秘密の会合を開いた。",["clan","des","tine"]],
+      ["pragmatic","実利的な","adj","We need a pragmatic approach.","実利的なアプローチが必要だ。",["pragma","tic"]],
+      ["tenacious","粘り強い","adj","He is tenacious in pursuing his goals.","彼は目標の追求に粘り強い。",["ten","aci","ous"]],
+      ["perfunctory","おざなりの","adj","She gave a perfunctory nod.","彼女はおざなりにうなずいた。",["per","funct","ory"]],
+      ["quintessential","典型的な","adj","This is the quintessential Japanese garden.","これは典型的な日本庭園だ。",["quint","essent","ial"]],
+      ["reticent","無口な","adj","He is reticent about his past.","彼は自分の過去について無口だ。",["re","tic","ent"]],
+      ["venerable","尊敬すべき","adj","The venerable professor retired at eighty.","その尊敬すべき教授は80歳で退職した。",["vener","able"]],
+      ["austerity","緊縮","n","The government imposed austerity measures.","政府は緊縮策を課した。",["auster","ity"]],
+      ["conundrum","難問","n","Climate change poses a difficult conundrum.","気候変動は難しい難問を突きつけている。",["co","nun","drum"]],
+      ["debacle","大失敗","n","The launch turned into a complete debacle.","その発売は完全な大失敗に終わった。",["de","bacle"]],
+      ["epitome","典型","n","She is the epitome of elegance.","彼女は優雅さの典型だ。",["epi","tome"]],
+      ["hegemony","覇権","n","The empire sought regional hegemony.","その帝国は地域の覇権を求めた。",["hege","mony"]],
+      ["impasse","行き詰まり","n","The talks reached an impasse.","交渉は行き詰まりに達した。",["im","passe"]],
+      ["panacea","万能薬","n","Money is not a panacea for everything.","金はすべての万能薬ではない。",["pan","acea"]],
+      ["plethora","過多","n","We have a plethora of options.","選択肢はあり余るほどある。",["pleth","ora"]],
+      ["reprisal","報復","n","They feared reprisals from the regime.","彼らは政権からの報復を恐れた。",["re","pris","al"]],
+      ["zenith","頂点","n","His career reached its zenith in 2020.","彼のキャリアは2020年に頂点に達した。",["ze","nith"]]]),
+    mk("biz20","ビジネス英単語 20","💼",[
+      ["leverage","活用する","v","We can leverage our brand to enter new markets.","ブランドを活用して新市場に参入できる。",["lever","age"]],
+      ["streamline","効率化する","v","We streamlined the approval process.","承認プロセスを効率化した。",["stream","line"]],
+      ["delegate","委任する","v","A good manager delegates tasks effectively.","良い管理職は仕事を上手に委任する。",["de","leg","ate"]],
+      ["expedite","早める","v","Please expedite the shipping process.","出荷手続きを早めてください。",["ex","ped","ite"]],
+      ["outsource","外部委託する","v","We outsourced customer support overseas.","カスタマーサポートを海外に外部委託した。",["out","source"]],
+      ["reimburse","払い戻す","v","The company will reimburse your travel expenses.","会社が出張費を払い戻します。",["re","im","burse"]],
+      ["procurement","調達","n","She works in the procurement department.","彼女は調達部門で働いている。",["pro","cure","ment"]],
+      ["revenue","収益","n","Our revenue grew by ten percent this year.","今年は収益が10％伸びた。",["re","venue"]],
+      ["stakeholder","利害関係者","n","We must consider all stakeholders before deciding.","決定の前にすべての利害関係者を考慮すべきだ。",["stake","holder"]],
+      ["remuneration","報酬","n","The job offers generous remuneration.","その職は手厚い報酬を提示している。",["re","muner","ation"]],
+      ["liability","負債","n","The company has significant liabilities.","その会社は多額の負債を抱えている。",["li","abil","ity"]],
+      ["redundancy","人員削減","n","The merger led to hundreds of redundancies.","合併で数百人の人員削減が行われた。",["re","dund","ancy"]],
+      ["quota","ノルマ","n","He met his sales quota this month.","彼は今月の販売ノルマを達成した。"],
+      ["invoice","請求書","n","Please send the invoice by Friday.","金曜までに請求書を送ってください。",["in","voice"]],
+      ["lucrative","儲かる","adj","They signed a lucrative contract.","彼らは儲かる契約を結んだ。",["lucr","ative"]],
+      ["feasible","実現可能な","adj","Is the plan financially feasible?","その計画は資金的に実現可能か。",["feas","ible"]],
+      ["proprietary","独自の・専有の","adj","The software uses proprietary technology.","そのソフトは独自技術を使っている。",["propri","et","ary"]],
+      ["tentative","暫定の","adj","We set a tentative schedule for the launch.","発売の暫定スケジュールを組んだ。",["tent","ative"]],
+      ["confidential","機密の","adj","Please keep this information confidential.","この情報は機密扱いでお願いします。",["con","fid","ential"]],
+      ["mandatory","義務的な","adj","Attendance at the training is mandatory.","研修への出席は必須です。",["mand","atory"]]]),
+    mk("capitals","世界の首都","🌍",[
+      ["フランス","パリ"],["カナダ","オタワ"],["オーストラリア","キャンベラ"],
+      ["ブラジル","ブラジリア"],["エジプト","カイロ"],["トルコ","アンカラ"],
+      ["スイス","ベルン"],["タイ","バンコク"],["ケニア","ナイロビ"],["ノルウェー","オスロ"]]),
+    mk("yoji","四字熟語","🖌️",[
+      ["一石二鳥","一つの行為で二つの利益を得る"],["温故知新","昔の事から新しい知恵を得る"],
+      ["臥薪嘗胆","目的のため苦労に耐える"],["呉越同舟","敵同士が同じ場所に居合わせる"],
+      ["大器晩成","大人物は遅れて花開く"],["朝三暮四","目先の違いに気づかず騙される"],
+      ["五里霧中","状況がつかめず迷う"],["針小棒大","小さな事を大げさに言う"],
+      ["単刀直入","前置きなしに本題に入る"],["切磋琢磨","互いに励まし高め合う"]])
+  ];
+}
+
+/* ---------------- Utilities ---------------- */
+const $ = (id)=>document.getElementById(id);
+const shuffle = (a)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const todayNum = ()=>Math.floor(Date.now()/86400000);
+const esc = (s)=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const isLatin = (s)=>/^[\u0020-\u024F]+$/.test(s);  // ASCII + Latin Extended
+function uid(){ return "d"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function getDeck(id){ return state.decks.find(d=>d.id===id); }
+function progKey(deckId,cardId){ return deckId+"|"+cardId; }
+
+/* ---------------- Audio (WebAudio blips) ---------------- */
+let actx = null;
+function beep(freqs, dur=0.12, type="sine", vol=0.18){
+  if(!state.settings.sound) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    freqs.forEach((f,i)=>{
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(vol, actx.currentTime + i*dur);
+      g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + i*dur + dur);
+      o.connect(g); g.connect(actx.destination);
+      o.start(actx.currentTime + i*dur); o.stop(actx.currentTime + i*dur + dur);
+    });
+  }catch(e){}
+}
+const sndGood = ()=>beep([660,880],0.1,"sine");
+const sndFast = ()=>beep([660,880,1320],0.09,"sine");
+const sndBad  = ()=>beep([220,160],0.16,"square",0.1);
+const sndDone = ()=>beep([523,659,784,1047],0.13,"sine");
+
+/* ---------------- Speech ----------------
+   OSのジョーク音声（Zarvox等の宇宙人声）が選ばれないよう、
+   高品質な音声を明示的に選択する */
+let _voices = [];
+function refreshVoices(){ try{ _voices = speechSynthesis.getVoices()||[]; }catch(e){} }
+if(window.speechSynthesis){
+  refreshVoices();
+  try{ speechSynthesis.onvoiceschanged = refreshVoices; }catch(e){}
+}
+const NOVELTY_VOICE = /zarvox|trinoids|albert|bahh|bells|boing|bubbles|cellos|whisper|wobble|jester|organ|superstar|bad news|good news|deranged|hysterical|junior|ralph|fred|kathy|princess|grandma|grandpa|rocko|shelley|eddy|flo|reed|sandy/i;
+function pickVoice(lang){
+  if(!_voices.length) refreshVoices();
+  const vs = _voices.filter(v=>!NOVELTY_VOICE.test(v.name));
+  const two = lang.slice(0,2);
+  const pref = two==="en"
+    ? ["Samantha","Google US English","Microsoft Aria","Microsoft Zira","Alex","Karen","Daniel","Moira","Tessa","Serena"]
+    : ["Kyoko","Google 日本語","Microsoft Nanami","Microsoft Ayumi","O-Ren","Otoya"];
+  for(const n of pref){ const v = vs.find(x=>x.name.indexOf(n)>=0); if(v) return v; }
+  return vs.find(x=>x.lang.replace("_","-").toLowerCase()===lang.toLowerCase())
+      || vs.find(x=>x.lang.slice(0,2)===two) || null;
+}
+function makeUtter(text, lang){
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang; u.rate = 1.0; u.pitch = 1.0;
+  const v = pickVoice(lang);
+  if(v) u.voice = v;
+  return u;
+}
+function speak(text){
+  if(!state.settings.voice || !window.speechSynthesis) return;
+  try{
+    speechSynthesis.cancel();
+    const u = makeUtter(text, isLatin(text) ? "en-US" : "ja-JP");
+    // cancel直後のspeakは音が乱れることがあるため少し待つ
+    setTimeout(()=>{ try{ speechSynthesis.speak(u); }catch(e){} }, 60);
+  }catch(e){}
+}
+
+/* ---------------- Screens ---------------- */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $(id).classList.add("active");
+  window.scrollTo(0,0);
+}
+document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>{
+  const m = b.closest(".modal");
+  m.classList.remove("open"); save();
+  if(m.id==="m-visual"){
+    ygPause();   // 閉じたら動画音声を止める
+    // ドリル中に開いた動画モーダルを閉じたら、ゲームを再開
+    if(drillVisualOpen){ drillVisualOpen=false; endDrillNext(); return; }
+  }
+  renderHome();
+}));
+function openModal(id){ $(id).classList.add("open"); }
+
+/* ---------------- Home ---------------- */
+function deckDueCounts(deck){
+  let due=0, nw=0;
+  const t = todayNum();
+  deck.cards.forEach(c=>{
+    const p = state.progress[progKey(deck.id,c.id)];
+    if(!p) nw++;
+    else if(p.due<=t) due++;
+  });
+  return {due,nw};
+}
+const GREETINGS = [
+  "今日はどれで遊ぶ？🎮","きのうのキミより速く⚡","30秒だけ、脳のストレッチ🤸",
+  "スキマ時間にひとゲーム🚀","連続記録、伸ばしちゃう？🔥","脳が『もう1回』って言ってる🧠",
+  "サクッと1本、いっとく？🍭","記憶は遊んだもん勝ち🏆"
+];
+function renderHome(){
+  $("greeting").textContent = GREETINGS[Math.floor(Math.random()*GREETINGS.length)];
+  // stats
+  let learned=0, dueAll=0;
+  const t = todayNum();
+  state.decks.forEach(d=>d.cards.forEach(c=>{
+    const p = state.progress[progKey(d.id,c.id)];
+    if(p && p.reps>0){ learned++; if(p.due<=t) dueAll++; }
+  }));
+  $("st-learned").textContent = learned;
+  $("st-due").textContent = dueAll;
+  $("st-streak").textContent = state.streak.count;
+  // decks
+  const g = $("deckgrid"); g.innerHTML="";
+  state.decks.forEach(d=>{
+    const {due,nw} = deckDueCounts(d);
+    const el = document.createElement("div");
+    el.className="deck";
+    el.innerHTML = `<div class="emoji">${esc(d.emoji||"📚")}</div>
+      <div class="info"><h3>${esc(d.name)}</h3>
+      <p>${d.cards.length}枚 ${due?`<span class="badge">復習 ${due}</span>`:""} ${nw?`<span class="badge new">新規 ${nw}</span>`:""}</p></div>
+      <button class="playbtn">▶ あそぶ</button>`;
+    el.querySelector(".playbtn").addEventListener("click",(ev)=>{ev.stopPropagation();startGame(d.id);});
+    el.addEventListener("click",()=>openDeck(d.id));
+    g.appendChild(el);
+  });
+}
+
+/* ================================================================
+   SPEED GAME ENGINE
+   queue item: {card, successes, errors, times[]}
+   - correct: successes++  -> gap = 2 * 2^(successes-1)  (2,4,8)
+              successes>=4 -> graduated (leaves queue)
+   - wrong:   errors++, successes=0, reinsert at front (repeat next)
+================================================================ */
+const SESSION_SIZE = 8;  // known words leave instantly, so games stay short
+const FAST_T = 2.0;      // 「即答」とみなす秒数
+let game = null;
+let qStart = 0, timerInt = null;
+
+function pickSessionCards(deck){
+  const t = todayNum();
+  const withMeta = deck.cards.map(c=>{
+    const p = state.progress[progKey(deck.id,c.id)];
+    return {c, p, isNew: !p, isDue: p && p.due<=t};
+  }).filter(x=>!(x.p && x.p.known));   // 「知ってた」カードは今後出題しない
+  const due  = shuffle(withMeta.filter(x=>x.isDue));
+  const nw   = shuffle(withMeta.filter(x=>x.isNew));
+  const rest = shuffle(withMeta.filter(x=>!x.isNew && !x.isDue))
+               .sort((a,b)=>(a.p.due||0)-(b.p.due||0));
+  return due.concat(nw, rest).slice(0, SESSION_SIZE).map(x=>x.c);
+}
+
+function startGame(deckId){
+  const deck = getDeck(deckId);
+  if(!deck || deck.cards.length < 3){ alert("このデッキには3枚以上のカードが必要です"); return; }
+  const cards = shuffle(pickSessionCards(deck));
+  if(!cards.length){ alert("このデッキのカードはすべて習得済み（😎知ってた）です！"); return; }
+  game = {
+    deckId,
+    queue: cards.map(c=>({card:c, successes:0, errors:0, times:[], track:"normal", asked:false, known:false})),
+    total: cards.length,
+    graduated: [],
+    score: 0, combo: 0, best: null,
+    answers: 0, correctAnswers: 0,
+    locked: false,
+    startedAt: Date.now()
+  };
+  show("scr-game");
+  nextQuestion();
+}
+
+function gameProgress(){
+  const partial = game.queue.reduce((s,it)=>s + (it.successes>0 ? 0.5 : 0), 0);
+  return Math.min(100, Math.round(100*(game.graduated.length + partial)/game.total));
+}
+
+/* Distractor pools by part of speech — used to keep choices fresh and
+   grammatically consistent (verb question -> verb choices, etc.) */
+const DISTRACTOR_POOL = {
+  n:  ["椅子","窓","橋","空","海","星","森","石","馬","猫","雲","道","船","卵","塩","庭","島","鐘","米","靴"],
+  v:  ["走る","投げる","忘れる","選ぶ","運ぶ","壊す","押す","引く","貸す","招く","疑う","褒める","学ぶ","祈る","洗う","数える","探す","守る"],
+  adj:["静かな","険しい","素早い","曖昧な","豊かな","危険な","丁寧な","複雑な","単純な","勇敢な","慎重な","新鮮な","巨大な","柔らかい","厳しい","賢い","退屈な","快適な"]
+};
+function distractors(item){
+  const card = item.card;
+  const deck = getDeck(game.deckId);
+  // candidates from the deck: same part of speech when known
+  let cands = deck.cards
+    .filter(c=>c.id!==card.id && c.a!==card.a && (!card.cat || !c.cat || c.cat===card.cat))
+    .map(c=>c.a);
+  // top up from the category pool only when the deck itself is too small —
+  // 難単語デッキに簡単な単語が混ざると正解がバレるため
+  if(cands.length < 6 && card.cat && DISTRACTOR_POOL[card.cat]){
+    const deckAnswers = new Set(deck.cards.map(c=>c.a));
+    DISTRACTOR_POOL[card.cat].forEach(a=>{
+      if(!deckAnswers.has(a) && a!==card.a) cands.push(a);
+    });
+  }
+  cands = [...new Set(cands)];
+  // variety: avoid distractors this card has already shown this session
+  item.seen = item.seen || [];
+  let fresh = cands.filter(a=>!item.seen.includes(a));
+  if(fresh.length < 2){ item.seen = []; fresh = cands.slice(); }
+  const picked = shuffle(fresh).slice(0,2);
+  if(picked.length < 2){                      // tiny deck fallback
+    shuffle(cands).forEach(a=>{ if(picked.length<2 && !picked.includes(a)) picked.push(a); });
+  }
+  picked.forEach(a=>item.seen.push(a));
+  return picked;
+}
+
+function nextQuestion(){
+  if(!game) return;
+  $("knowask").style.display = "none";
+  $("drill").style.display = "none";
+  $("choices").style.display = "";
+  if(game.queue.length===0){ endGame(); return; }
+  game.locked = false;
+  const item = game.queue[0];
+  const qc = $("qcard");
+  qc.classList.remove("slidein"); void qc.offsetWidth; qc.classList.add("slidein");
+  $("qtext").textContent = item.card.q;
+  $("gprogress").style.width = gameProgress()+"%";
+  $("gscore").textContent = game.score;
+  $("gcombo").textContent = game.combo>=2 ? "🔥 COMBO ×"+game.combo : "";
+  $("feedback").innerHTML = "";
+  // choices
+  const opts = shuffle([item.card.a, ...distractors(item)]);
+  const box = $("choices"); box.innerHTML="";
+  opts.forEach(a=>{
+    const b = document.createElement("button");
+    b.className="choice"; b.textContent = a;
+    b.addEventListener("click",()=>answer(b, a===item.card.a));
+    box.appendChild(b);
+  });
+  // timer
+  qStart = performance.now();
+  clearInterval(timerInt);
+  const fill = $("timerfill"); fill.style.width="100%";
+  timerInt = setInterval(()=>{
+    const t = (performance.now()-qStart)/1000;
+    $("gtimer").textContent = t.toFixed(1)+"s";
+    fill.style.width = Math.max(0, 100 - (t/8)*100) + "%";
+  }, 100);
+  speak(item.card.q);
+}
+
+function insertAfter(item, n){   // 「n個あと」= 今からn問目として再登場
+  const pos = Math.max(0, Math.min(n-1, game.queue.length));
+  game.queue.splice(pos, 0, item);
+}
+
+function answer(btn, correct){
+  if(!game || game.locked) return;
+  game.locked = true;
+  clearInterval(timerInt);
+  const t = (performance.now()-qStart)/1000;
+  const item = game.queue.shift();
+  game.answers++;
+  const buttons = [...document.querySelectorAll(".choice")];
+  buttons.forEach(b=>b.disabled=true);
+
+  if(correct){
+    game.correctAnswers++;
+    item.times.push(t);
+    if(game.best===null || t<game.best) game.best = t;
+    game.combo++;
+    const fast = t < 2.0;
+    const pts = Math.round((100 + Math.max(0,(4-t))*40) * (1 + Math.min(game.combo,10)*0.1));
+    game.score += pts;
+    btn.classList.add("correct");
+    fast ? sndFast() : sndGood();
+    $("feedback").innerHTML = fast
+      ? `<span class="fast">⚡ FAST! ${t.toFixed(1)}s +${pts}</span>`
+      : `<span class="good">✓ 正解 +${pts}</span>`;
+    item.successes++;
+    // 即答なら「知ってた？」を確認（初正解・ノーミスのカードのみ、一度だけ）
+    if(t < FAST_T && item.successes===1 && item.errors===0 && !item.asked){
+      item.asked = true;
+      setTimeout(()=>showKnowAsk(item), 450);
+      return;
+    }
+    routeCorrect(item);
+    setTimeout(nextQuestion, 400);
+  }else{
+    game.combo = 0;
+    item.errors++;
+    item.successes = 0;
+    btn.classList.add("wrong");
+    sndBad();
+    // reveal the correct one
+    buttons.forEach(b=>{ if(b.textContent===item.card.a) b.classList.add("reveal"); });
+    $("feedback").innerHTML = `<span class="bad">正解は「${esc(item.card.a)}」</span>`;
+    insertAfter(item, 2);   // 2個あとに選択肢を変えて再出題
+    setTimeout(()=>startDrill(item), 900);   // 正解を3回連続で覚え込むドリルへ
+  }
+}
+
+/* ---- 不正解ドリル ----
+   日本語 →（間）→ 英語 →（間）→ 英語の例文 を、3回繰り返して覚え込む。
+   音声は onend で順番に繋ぐ（cancel で英語が消える問題を修正）。
+   画像も同時に表示して視覚でも記憶を強化する。 */
+let drillTimer = null, drillToken = 0, drillVisualOpen = false, drillItem = null, partsInt = null;
+const DRILL_REPS = 5;   // 発音は5回繰り返す
+function stopDrillAudio(){
+  drillToken++;
+  clearTimeout(drillTimer);
+  clearInterval(partsInt);
+  try{ speechSynthesis.cancel(); }catch(e){}
+}
+
+/* ---- 語源分解: obliterate → ob + liter + ate ---- */
+const ETYM_PREFIX = ["counter","circum","trans","inter","under","over","anti","ante","con","com","col","cor","dis","dif","mis","non","out","per","pre","pro","sub","suc","suf","sup","sur","syn","sym","de","ex","in","im","il","ir","ob","oc","of","op","re","se","un","up","ab","ad","al","co","a","e"];
+const ETYM_SUFFIX = ["ability","ibility","ation","ition","ment","ness","tion","sion","ance","ence","able","ible","ious","eous","uous","ous","ive","ful","less","ise","ize","ify","ity","ate","ent","ant","ory","ary","ery","al","ic","ly","er","or","y"];
+function getParts(card){
+  // 1) カードに語源データがあり、結合すると元の単語になるならそれを使う
+  if(Array.isArray(card.parts) && card.parts.length>1 &&
+     card.parts.join("").toLowerCase() === card.q.toLowerCase()) return card.parts;
+  // 2) 英単語なら接頭辞・接尾辞で自動分解
+  if(!isLatin(card.q) || /\s/.test(card.q) || card.q.length < 6) return [card.q];
+  let w = card.q, pre = "", suf = "";
+  for(const p of ETYM_PREFIX){
+    if(w.toLowerCase().startsWith(p) && w.length - p.length >= 3){ pre = w.slice(0, p.length); w = w.slice(p.length); break; }
+  }
+  for(const s of ETYM_SUFFIX){
+    if(w.toLowerCase().endsWith(s) && w.length - s.length >= 3){ suf = w.slice(w.length - s.length); w = w.slice(0, w.length - s.length); break; }
+  }
+  const out = [pre, w, suf].filter(Boolean);
+  return out.length > 1 ? out : [card.q];
+}
+const PART_COLORS = ["#6c8cff","#ffcf5c","#2dd4a0","#ff8cc8","#9b6cff"];
+/* パーツに順番に色を灯す: 全部消灯 → ob → +liter → +ate → 全点灯キープ → 繰り返し */
+function startPartsAnim(){
+  clearInterval(partsInt);
+  const spans = [...document.querySelectorAll("#drill-q .wpart")];
+  if(spans.length < 2) return;
+  const cycle = spans.length + 2;
+  let step = 0;
+  const paint = ()=>{
+    const k = step % cycle;
+    spans.forEach((s,i)=>{
+      const lit = (k===cycle-1) || (k > i);   // 最後のステップは全点灯キープ
+      s.style.color = lit ? PART_COLORS[i % PART_COLORS.length] : "";
+      s.style.opacity = lit ? 1 : .35;
+    });
+    step++;
+  };
+  paint();
+  partsInt = setInterval(paint, 700);
+}
+function endDrillNext(){
+  stopDrillAudio();
+  $("drill").style.display = "none";
+  $("choices").style.display = "";
+  nextQuestion();
+}
+function speakChain(parts, token, onDone){
+  // parts: [{text,lang}] を、各発話の終了を待って400msの間をおいて順に話す
+  if(!state.settings.voice || !window.speechSynthesis){
+    drillTimer = setTimeout(onDone, 2500); return;
+  }
+  try{
+    speechSynthesis.cancel();
+    let i = 0;
+    const next = ()=>{
+      if(token !== drillToken || !game) return;
+      if(i >= parts.length){ onDone(); return; }
+      const p = parts[i++];
+      const u = makeUtter(p.text, p.lang);
+      let advanced = false;
+      const adv = ()=>{
+        if(advanced) return; advanced = true;
+        clearTimeout(guard);
+        drillTimer = setTimeout(next, 400);      // しっかり間をおく
+      };
+      u.onend = adv; u.onerror = adv;
+      const guard = setTimeout(adv, 8000);       // 音声エンジン停止時の保険
+      speechSynthesis.speak(u);
+    };
+    drillTimer = setTimeout(next, 80);   // cancel直後の音割れ防止
+  }catch(e){ drillTimer = setTimeout(onDone, 2500); }
+}
+function startDrill(item){
+  if(!game) return;
+  drillItem = item;
+  const card = item.card;
+  const dr = $("drill");
+  $("choices").style.display = "none";
+  $("feedback").innerHTML = "";
+  dr.style.display = "";
+  $("drill-a").textContent = card.a;   // 日本語（意味）
+  // 英語の単語は語源パーツに分解して表示し、順に色を灯してスペルを覚え込む
+  const wparts = getParts(card);
+  if(wparts.length > 1){
+    $("drill-q").innerHTML = wparts.map(p=>`<span class="wpart">${esc(p)}</span>`).join("");
+    $("drill-parts").textContent = wparts.join(" + ");
+  }else{
+    $("drill-q").textContent = card.q;
+    $("drill-parts").textContent = "";
+  }
+  startPartsAnim();
+  // 例文（用法）: 対象単語をハイライト
+  const exEl = $("drill-ex");
+  if(card.ex){
+    const re = new RegExp("("+card.q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\w*)","i");
+    exEl.innerHTML = `<div class="en">${esc(card.ex).replace(re,"<mark>$1</mark>")}</div>`+
+                     (card.exJa ? `<div class="ja">${esc(card.exJa)}</div>` : "");
+  }else exEl.innerHTML = "";
+  const myToken = ++drillToken;
+  $("drill-visual").onclick = ()=>{
+    stopDrillAudio();
+    drillVisualOpen = true;
+    openVisual(card);
+  };
+  $("drill-skip").onclick = endDrillNext;
+  let rep = 0;
+  const doRep = ()=>{
+    if(myToken !== drillToken || !game) return;
+    rep++;
+    $("drill-count").textContent = `正解を覚えよう ${rep} / ${DRILL_REPS}`;
+    const pair = $("drill-pair");
+    pair.classList.remove("pulse"); void pair.offsetWidth; pair.classList.add("pulse");
+    const parts = [
+      {text: card.a, lang: isLatin(card.a) ? "en-US" : "ja-JP"},
+      {text: card.q, lang: isLatin(card.q) ? "en-US" : "ja-JP"}
+    ];
+    if(card.ex && rep <= 3) parts.push({text: card.ex, lang: "en-US"});  // 例文は最初の3回、後半はテンポよく単語のみ
+    speakChain(parts, myToken, ()=>{
+      if(myToken !== drillToken || !game) return;
+      if(rep < DRILL_REPS) drillTimer = setTimeout(doRep, 600);
+      else drillTimer = setTimeout(endDrillNext, 600);
+    });
+  };
+  doRep();
+}
+
+/* correct answers are pushed further and further away:
+   normal: 5 -> 10 -> 20 ...   unsure(知らなかった): 4 -> 8 -> 16 ...
+   When the gap reaches beyond the remaining queue, the card graduates —
+   覚えているものを繰り返す必要はない */
+function routeCorrect(item){
+  const n = item.track==="unsure"
+    ? 4 * Math.pow(2, item.successes)        // 4の再確認後: 8, 16, 32…
+    : 5 * Math.pow(2, item.successes-1);     // 5, 10, 20…
+  if(n-1 > game.queue.length) game.graduated.push(item);  // 地平線の向こう＝卒業
+  else insertAfter(item, n);
+}
+
+/* ---- 「知ってた？」確認 ---- */
+let pendingKnow = null;
+function showKnowAsk(item){
+  pendingKnow = item;
+  $("knowask").style.display = "";
+}
+$("ka-knew").addEventListener("click",()=>{
+  if(!pendingKnow) return;
+  pendingKnow.known = true;                  // もう出題しない
+  game.graduated.push(pendingKnow);
+  pendingKnow = null;
+  nextQuestion();
+});
+$("ka-new").addEventListener("click",()=>{
+  if(!pendingKnow) return;
+  pendingKnow.track = "unsure";              // 偶然かも → 4個あとに選択肢を変えて再確認
+  pendingKnow.successes = 0;
+  if(game.queue.length===0) game.graduated.push(pendingKnow);
+  else insertAfter(pendingKnow, 4);
+  pendingKnow = null;
+  nextQuestion();
+});
+
+/* ---------------- End of session: SRS update ---------------- */
+function updateSRS(item){
+  const key = progKey(game.deckId, item.card.id);
+  const p = state.progress[key] || {ease:2.5, ivl:0, due:0, reps:0, best:null};
+  p.reps++;
+  const avg = item.times.length ? item.times.reduce((a,b)=>a+b,0)/item.times.length : 99;
+  if(item.times.length && (p.best===null || Math.min(...item.times)<p.best))
+    p.best = Math.min(...item.times);
+  if(item.known){                       // 😎 知ってた → 出題対象から外す
+    p.known = true; p.ivl = 365; p.due = todayNum()+365;
+    state.progress[key] = p; return;
+  }
+  if(item.errors===0){
+    p.ivl = p.ivl===0 ? 1 : p.ivl===1 ? 3 : Math.round(p.ivl*p.ease);
+    if(avg<2) p.ease = Math.min(3.0, p.ease+0.05);
+  }else{
+    p.ivl = 1;
+    p.ease = Math.max(1.3, p.ease-0.2);
+  }
+  p.due = todayNum() + p.ivl;
+  state.progress[key] = p;
+}
+
+function bumpStreak(){
+  const today = new Date().toDateString();
+  if(state.streak.last===today) return;
+  const y = new Date(Date.now()-86400000).toDateString();
+  state.streak.count = (state.streak.last===y) ? state.streak.count+1 : 1;
+  state.streak.last = today;
+}
+
+function endGame(){
+  clearInterval(timerInt);
+  game.graduated.forEach(updateSRS);
+  bumpStreak();
+  save();
+  sndDone();
+  // stats
+  const allTimes = game.graduated.flatMap(it=>it.times);
+  const avg = allTimes.length ? allTimes.reduce((a,b)=>a+b,0)/allTimes.length : 0;
+  const acc = game.answers ? Math.round(100*game.correctAnswers/game.answers) : 0;
+  $("r-score").textContent = game.score;
+  $("r-acc").textContent = acc+"%";
+  $("r-avg").textContent = avg.toFixed(1)+"s";
+  $("r-best").textContent = (game.best||0).toFixed(1)+"s";
+  $("r-emoji").textContent = acc>=90 ? "🏆" : acc>=70 ? "🎉" : "💪";
+  $("r-title").textContent = acc>=90 ? "パーフェクトに近い！" : acc>=70 ? "クリア！" : "よくがんばった！";
+  $("r-sub").textContent = `${game.total}枚のカードを習得 — 間隔を空けて復習すると長期記憶に定着します`;
+  const list = $("r-cards"); list.innerHTML="";
+  game.graduated.forEach(it=>{
+    const avgT = it.times.length ? it.times.reduce((a,b)=>a+b,0)/it.times.length : 0;
+    const row = document.createElement("div");
+    row.className="cres";
+    const mark = it.known ? "😎" : it.errors===0 ? "✅" : "🔁";
+    row.innerHTML = `<span>${mark} ${esc(it.card.q)} → ${esc(it.card.a)}</span>
+      <span class="t">${it.known?"知ってた":`平均 ${avgT.toFixed(1)}s${it.errors?` / ミス${it.errors}`:""}`}</span>`;
+    row.appendChild(visualBtn(it.card));   // ミスした単語こそ視覚で強化
+    list.appendChild(row);
+  });
+  // 記憶強化モード: 間違えた単語を画像+動画で覚え直す
+  strengthenList = game.graduated.filter(it=>it.errors>0).map(it=>it.card);
+  $("btn-strengthen").style.display = strengthenList.length ? "" : "none";
+  show("scr-result");
+  if(acc>=70) confetti();
+}
+
+function confetti(){
+  const em = ["🎉","✨","⭐","💫","🎊"];
+  for(let i=0;i<36;i++){
+    const s = document.createElement("div");
+    s.className="confetti";
+    s.textContent = em[Math.floor(Math.random()*em.length)];
+    s.style.left = Math.random()*100+"vw";
+    s.style.animationDuration = (1.6+Math.random()*1.6)+"s";
+    s.style.animationDelay = (Math.random()*0.6)+"s";
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(), 4000);
+  }
+}
+
+/* ---------------- Visual learning (image / video search) ---------------- */
+let visualSeq = 0;
+let strengthenList = [], strengthenIdx = 0;
+
+/* ---- YouGlish 埋め込み: 動画切替のたびに自動で5秒巻き戻し、文脈から聞ける ---- */
+let ygWidget = null, ygReady = false, ygLoading = false, ygPendingQuery = null, ygNeedRewind = false;
+window.onYouglishAPIReady = function(){
+  try{
+    ygWidget = new YG.Widget("yg-widget", {
+      components: 88,          // caption + speed + control buttons
+      autoStart: 1,
+      backgroundColor: "#131a2e", textColor: "#8b96b8",
+      captionColor: "#eef2ff", titleColor: "#8b96b8", markerColor: "#ffcf5c",
+      events: {
+        "onFetchDone": (e)=>{
+          if(e.totalResult===0){ const s=$("v-status"); s.style.display=""; s.textContent="この単語の発話動画は見つかりませんでした"; }
+        },
+        "onVideoChange": ()=>{ ygNeedRewind = true; },
+        "onPlayerStateChange": (e)=>{
+          // 再生が始まった瞬間に5秒巻き戻す → 単語の前の文脈から聞ける
+          if(ygNeedRewind && e.state===1){
+            ygNeedRewind = false;
+            try{ ygWidget.move(-5); }catch(err){}
+          }
+        }
+      }
+    });
+    ygReady = true;
+    if(ygPendingQuery){ ygWidget.fetch(ygPendingQuery, "english"); ygPendingQuery = null; }
+  }catch(e){}
+};
+function ygFetch(q){
+  if(ygReady && ygWidget){ try{ ygWidget.fetch(q, "english"); }catch(e){} return; }
+  ygPendingQuery = q;
+  if(!ygLoading){
+    ygLoading = true;
+    const s = document.createElement("script");
+    s.src = "https://youglish.com/public/emb/widget.js";
+    s.charset = "utf-8";
+    document.head.appendChild(s);
+  }
+}
+function ygPause(){ if(ygWidget){ try{ ygWidget.pause(); }catch(e){} } }
+function speakWordAndExample(card){
+  // 単語 →（間）→ 例文 の順で読み上げ（cancelで途切れないようキューに積む）
+  if(!state.settings.voice || !window.speechSynthesis) return;
+  try{
+    speechSynthesis.cancel();
+    const u1 = makeUtter(card.q, isLatin(card.q) ? "en-US" : "ja-JP");
+    if(card.ex){
+      const u2 = makeUtter(card.ex, "en-US");
+      u1.onend = ()=>setTimeout(()=>{ try{speechSynthesis.speak(u2);}catch(e){} }, 400);
+    }
+    setTimeout(()=>{ try{ speechSynthesis.speak(u1); }catch(e){} }, 60);
+  }catch(e){}
+}
+function openVisual(card, strengthen){
+  const seq = ++visualSeq;
+  $("v-word").textContent = card.q;
+  $("v-meaning").textContent = card.a;
+  // 例文（用法）
+  if(card.ex){
+    const re = new RegExp("("+card.q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\w*)","i");
+    $("v-ex").innerHTML = `<div class="en">${esc(card.ex).replace(re,"<mark>$1</mark>")}</div>`+
+                          (card.exJa ? `<div class="ja">${esc(card.exJa)}</div>` : "");
+  }else $("v-ex").innerHTML = "";
+  const grid = $("v-grid"); grid.innerHTML = "";
+  const status = $("v-status");
+  status.style.display = "none"; status.textContent = "";
+  const term = card.q;
+  const latin = isLatin(card.q);
+  const gTerm = latin ? card.q : card.q + " " + card.a;
+  $("v-speak").onclick   = ()=>speakWordAndExample(card);
+  $("v-google").onclick  = ()=>window.open("https://www.google.com/search?tbm=isch&q="+encodeURIComponent(gTerm), "_blank");
+  $("v-loadimg").onclick = ()=>loadVisualImages(card);
+  // 動画ファースト: 英単語はYouGlishをその場に埋め込み（5秒前から自動再生）
+  const vt = $("v-youtube");
+  if(latin){
+    $("yg-wrap").style.display = "";
+    ygFetch(card.q);
+    vt.textContent = "🎞️ セリフ動画";
+    vt.onclick = ()=>window.open("https://getyarn.io/yarn-find?text="+encodeURIComponent(card.q), "_blank");
+  }else{
+    ygPause();
+    $("yg-wrap").style.display = "none";
+    vt.textContent = "🎬 動画検索";
+    vt.onclick = ()=>window.open("https://www.youtube.com/results?search_query="+encodeURIComponent(term), "_blank");
+  }
+  // 記憶強化モード: 「次の単語 →」で順に巡る
+  const nextBtn = $("v-next");
+  if(strengthen){
+    nextBtn.style.display = "";
+    nextBtn.textContent = strengthenIdx < strengthenList.length-1 ? `次の単語 →（あと${strengthenList.length-1-strengthenIdx}語）` : "✅ 強化完了";
+    nextBtn.onclick = ()=>{
+      strengthenIdx++;
+      if(strengthenIdx < strengthenList.length) openVisual(strengthenList[strengthenIdx], true);
+      else { ygPause(); $("m-visual").classList.remove("open"); }
+    };
+  }else{
+    nextBtn.style.display = "none";
+  }
+  openModal("m-visual");
+  if(!latin) speakWordAndExample(card);   // 英単語はYouGlishが再生するので読み上げは🔊ボタンで
+}
+/* 画像は「希望すれば見える」— 🖼️ボタンを押したときだけ検索して表示 */
+function loadVisualImages(card){
+  const seq = ++visualSeq;
+  const grid = $("v-grid"); grid.innerHTML = "";
+  const status = $("v-status");
+  status.style.display = ""; status.textContent = "画像を検索中…";
+  fetchCommonsImages(card.q).then(urls=>{
+    if(seq !== visualSeq) return;           // stale response
+    if(!urls.length){
+      status.textContent = "埋め込み画像が見つかりませんでした。「🌐 Google画像」で検索してみてください。";
+      return;
+    }
+    status.style.display = "none";
+    urls.slice(0,8).forEach(u=>{
+      const img = document.createElement("img");
+      img.loading = "lazy"; img.src = u; img.alt = card.q;
+      img.addEventListener("click", ()=>img.classList.toggle("big"));
+      img.addEventListener("error", ()=>img.remove());
+      grid.appendChild(img);
+    });
+  }).catch(()=>{
+    if(seq !== visualSeq) return;
+    status.textContent = "画像検索に失敗しました（オフライン？）。「🌐 Google画像」もお試しください。";
+  });
+}
+async function fetchCommonsImages(term){
+  const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*"
+    + "&generator=search&gsrsearch=" + encodeURIComponent("filetype:bitmap " + term)
+    + "&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url&iiurlwidth=560";
+  const r = await fetch(url);
+  const j = await r.json();
+  const pages = (j.query && j.query.pages) ? Object.values(j.query.pages) : [];
+  return pages
+    .sort((a,b)=>(a.index||0)-(b.index||0))
+    .map(p=>p.imageinfo && p.imageinfo[0])
+    .filter(Boolean)
+    .map(ii=>ii.thumburl || ii.url)
+    .filter(u=>/\.(jpe?g|png|gif|webp)(\?|$)/i.test(u||""));
+}
+function visualBtn(card){
+  const b = document.createElement("button");
+  b.className = "vbtn"; b.textContent = "🖼️"; b.title = "画像・動画で覚える";
+  b.addEventListener("click",(ev)=>{ ev.stopPropagation(); openVisual(card); });
+  return b;
+}
+
+/* ---------------- Deck detail ---------------- */
+let currentDeckId = null;
+function openDeck(id){
+  currentDeckId = id;
+  const d = getDeck(id);
+  $("dd-title").textContent = (d.emoji||"📚")+" "+d.name;
+  const {due,nw} = deckDueCounts(d);
+  $("dd-desc").textContent = `${d.cards.length}枚 / 復習待ち${due}枚 / 新規${nw}枚`;
+  $("dd-delete").style.display = d.builtin ? "none" : "";
+  const list = $("dd-cards"); list.innerHTML="";
+  d.cards.forEach(c=>{
+    const p = state.progress[progKey(d.id,c.id)];
+    const row = document.createElement("div");
+    row.className="citem";
+    row.innerHTML = `<div class="qa"><b>${esc(c.q)}</b><span>${esc(c.a)}${p&&p.best?` — 最速${p.best.toFixed(1)}s ⚡`:""}</span></div>`;
+    row.appendChild(visualBtn(c));
+    const del = document.createElement("button");
+    del.textContent="🗑"; del.title="カード削除";
+    del.addEventListener("click",()=>{
+      if(!confirm("このカードを削除しますか？")) return;
+      d.cards = d.cards.filter(x=>x.id!==c.id);
+      delete state.progress[progKey(d.id,c.id)];
+      save(); openDeck(id);
+    });
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+  openModal("m-deck");
+}
+$("dd-play").addEventListener("click",()=>{
+  $("m-deck").classList.remove("open");
+  startGame(currentDeckId);
+});
+$("dd-addcard").addEventListener("click",()=>{
+  const q = prompt("問題（表）:"); if(!q) return;
+  const a = prompt("答え（裏）:"); if(!a) return;
+  const d = getDeck(currentDeckId);
+  d.cards.push({id:uid(), q:q.trim(), a:a.trim()});
+  save(); openDeck(currentDeckId);
+});
+$("dd-delete").addEventListener("click",()=>{
+  if(!confirm("このデッキを削除しますか？")) return;
+  state.decks = state.decks.filter(d=>d.id!==currentDeckId);
+  save();
+  $("m-deck").classList.remove("open");
+  renderHome();
+});
+
+/* ---------------- New deck ---------------- */
+$("btn-adddeck").addEventListener("click",()=>{
+  $("nd-err").textContent=""; openModal("m-newdeck");
+});
+function parseLines(text){
+  const cards=[];
+  text.split(/\n+/).forEach(line=>{
+    line = line.trim(); if(!line) return;
+    const m = line.split(/\t|[:：,、＝=]| - /).map(s=>s.trim()).filter(Boolean);
+    if(m.length>=2) cards.push({id:uid(), q:m[0], a:m.slice(1).join(" ")});
+  });
+  return cards;
+}
+function addDeck(name, cards){
+  state.decks.push({id:uid(), name, emoji:"🧠", builtin:false, cards});
+  save();
+  $("m-newdeck").classList.remove("open");
+  $("nd-name").value=""; $("nd-text").value="";
+  renderHome();
+}
+$("nd-manual").addEventListener("click",()=>{
+  const name = $("nd-name").value.trim() || "マイデッキ";
+  const cards = parseLines($("nd-text").value);
+  if(cards.length<3){ $("nd-err").textContent="「問題:答え」形式の行が3行以上必要です"; return; }
+  addDeck(name, cards);
+});
+$("nd-ai").addEventListener("click", async ()=>{
+  const key = state.settings.apiKey;
+  const text = $("nd-text").value.trim();
+  const errEl = $("nd-err");
+  errEl.textContent="";
+  if(!key){ errEl.textContent="設定画面でAnthropic APIキーを登録してください"; return; }
+  if(text.length<10){ errEl.textContent="覚えたい内容をもう少し入力してください"; return; }
+  const btn = $("nd-ai");
+  btn.innerHTML = `<span class="spinner"></span>生成中…`; btn.disabled=true;
+  try{
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key": key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify({
+        model:"claude-sonnet-5",
+        max_tokens: 2000,
+        messages:[{role:"user",content:
+`以下のテキストから暗記カード（フラッシュカード）を作成してください。
+- 3択クイズに使うので、答えは短く（単語〜短フレーズ）
+- 8〜16枚程度
+- catは品詞: 名詞="n", 動詞="v", 形容詞="adj", その他="other"
+- exはその単語の用法がわかる平易な英語の例文（10語前後）、exJaはその日本語訳。英単語でない場合はnull
+- partsは英単語の語源的な分解（例: obliterate → ["ob","liter","ate"]。結合すると必ず元の綴りになること。分解できない短い語はnull）
+- 出力はJSON配列のみ。説明文は不要。
+形式: [{"q":"問題","a":"答え","cat":"n","ex":"例文","exJa":"訳","parts":["ob","liter","ate"]}, ...]
+
+テキスト:
+${text}`}]
+      })
+    });
+    if(!res.ok){
+      const e = await res.json().catch(()=>({}));
+      throw new Error((e.error&&e.error.message) || ("HTTP "+res.status));
+    }
+    const data = await res.json();
+    const raw = data.content.map(b=>b.text||"").join("");
+    const m = raw.match(/\[[\s\S]*\]/);
+    if(!m) throw new Error("カードを抽出できませんでした");
+    const arr = JSON.parse(m[0]);
+    const cards = arr.filter(c=>c.q&&c.a).map(c=>({id:uid(), q:String(c.q), a:String(c.a),
+      cat:["n","v","adj","other"].includes(c.cat)?c.cat:null,
+      ex:c.ex?String(c.ex):null, exJa:c.exJa?String(c.exJa):null,
+      parts:(Array.isArray(c.parts)&&c.parts.length>1&&c.parts.join("").toLowerCase()===String(c.q).toLowerCase())?c.parts.map(String):null}));
+    if(cards.length<3) throw new Error("カードが3枚未満でした");
+    addDeck($("nd-name").value.trim()||"AIデッキ", cards);
+  }catch(e){
+    errEl.textContent = "生成に失敗: "+e.message;
+  }finally{
+    btn.innerHTML = "✨ AIで自動生成"; btn.disabled=false;
+  }
+});
+
+/* ---------------- Free learning: 分野を選んでAIが単語を抽出 ---------------- */
+const FREE_TOPICS = ["ビジネス会話","旅行英語","空港・機内","レストラン","IT・テック","ニュース英語","医療・健康","スポーツ","料理","映画・ドラマ","面接・転職","SNSスラング"];
+function openFree(){
+  $("nf-err").textContent = "";
+  const box = $("nf-chips"); box.innerHTML = "";
+  FREE_TOPICS.forEach(t=>{
+    const c = document.createElement("button");
+    c.className = "chip"; c.textContent = t;
+    c.addEventListener("click", ()=>{ $("nf-topic").value = t; });
+    box.appendChild(c);
+  });
+  openModal("m-free");
+}
+$("btn-free").addEventListener("click", openFree);
+$("nf-go").addEventListener("click", async ()=>{
+  const key = state.settings.apiKey;
+  const topic = $("nf-topic").value.trim();
+  const errEl = $("nf-err"); errEl.textContent = "";
+  if(!key){ errEl.textContent = "設定画面でAnthropic APIキーを登録してください"; return; }
+  if(!topic){ errEl.textContent = "分野を入力するか、下の候補をタップしてください"; return; }
+  const levelTxt = {easy:"中学〜高校レベルの基礎的な",
+                    normal:"大学入試〜TOEIC700点レベルの",
+                    hard:"英検1級・ネイティブレベルの高度な"}[$("nf-level").value];
+  // 既存の同名デッキがあれば重複を避けて追加
+  const existing = state.decks.find(d=>d.free && d.name===topic);
+  const knownWords = existing ? existing.cards.map(c=>c.q).join(", ") : "";
+  const btn = $("nf-go");
+  btn.innerHTML = `<span class="spinner"></span>単語を抽出中…`; btn.disabled = true;
+  try{
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key": key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify({
+        model:"claude-sonnet-5",
+        max_tokens: 3000,
+        messages:[{role:"user",content:
+`「${topic}」の分野で、日本人学習者が覚える価値のある${levelTxt}英単語・フレーズを12個選んでください。
+- q=英単語（または短いフレーズ）, a=日本語の意味（短く）
+- catは品詞: 名詞="n", 動詞="v", 形容詞="adj", その他="other"
+- exはその分野らしい使い方がわかる平易な英語の例文（10語前後）、exJaはその日本語訳
+- partsは英単語の語源的な分解（例: ["ob","liter","ate"]。結合すると必ず元の綴りになること。短い語はnull）
+${knownWords ? `- 次の単語は既に学習済みなので除外: ${knownWords}` : ""}
+- 出力はJSON配列のみ。説明文は不要。
+形式: [{"q":"単語","a":"意味","cat":"n","ex":"例文","exJa":"訳","parts":["ob","liter","ate"]}, ...]`}]
+      })
+    });
+    if(!res.ok){
+      const e = await res.json().catch(()=>({}));
+      throw new Error((e.error&&e.error.message) || ("HTTP "+res.status));
+    }
+    const data = await res.json();
+    const raw = data.content.map(b=>b.text||"").join("");
+    const m = raw.match(/\[[\s\S]*\]/);
+    if(!m) throw new Error("単語を抽出できませんでした");
+    const arr = JSON.parse(m[0]);
+    const cards = arr.filter(c=>c.q&&c.a).map(c=>({id:uid(), q:String(c.q), a:String(c.a),
+      cat:["n","v","adj","other"].includes(c.cat)?c.cat:null,
+      ex:c.ex?String(c.ex):null, exJa:c.exJa?String(c.exJa):null,
+      parts:(Array.isArray(c.parts)&&c.parts.length>1&&c.parts.join("").toLowerCase()===String(c.q).toLowerCase())?c.parts.map(String):null}));
+    if(cards.length<3) throw new Error("単語が3個未満でした");
+    let deck = existing;
+    if(deck){
+      const seen = new Set(deck.cards.map(c=>c.q.toLowerCase()));
+      cards.forEach(c=>{ if(!seen.has(c.q.toLowerCase())){ deck.cards.push(c); seen.add(c.q.toLowerCase()); } });
+    }else{
+      deck = {id:uid(), name:topic, emoji:"🎯", builtin:false, free:true, cards};
+      state.decks.push(deck);
+    }
+    save();
+    $("m-free").classList.remove("open");
+    renderHome();
+    startGame(deck.id);   // 生成したらすぐあそぶ
+  }catch(e){
+    errEl.textContent = "抽出に失敗: " + e.message;
+  }finally{
+    btn.innerHTML = "✨ 単語を抽出してあそぶ"; btn.disabled = false;
+  }
+});
+
+/* ---------------- Screenshot capture import ---------------- */
+let capImages = [];   // {data, mediaType, url}
+let capCards  = [];
+
+function openCapture(){
+  capImages = []; capCards = [];
+  renderCapThumbs(); renderCapPreview();
+  $("cap-err").textContent = "";
+  // deck selector
+  const sel = $("cap-deck"); sel.innerHTML = "";
+  const optNew = document.createElement("option");
+  optNew.value = "__new"; optNew.textContent = "＋ 新規デッキ「📷 スクショ単語帳」";
+  sel.appendChild(optNew);
+  state.decks.forEach(d=>{
+    const o = document.createElement("option");
+    o.value = d.id; o.textContent = (d.emoji||"📚")+" "+d.name;
+    sel.appendChild(o);
+  });
+  const existing = state.decks.find(d=>d.capture);
+  if(existing) sel.value = existing.id;
+  openModal("m-capture");
+}
+$("btn-capture").addEventListener("click", openCapture);
+
+function renderCapThumbs(){
+  const box = $("cap-thumbs"); box.innerHTML = "";
+  capImages.forEach((im,i)=>{
+    const t = document.createElement("div");
+    t.className = "thumb";
+    t.innerHTML = `<img src="${im.url}">`;
+    const del = document.createElement("button");
+    del.textContent = "✕";
+    del.addEventListener("click",()=>{ capImages.splice(i,1); renderCapThumbs(); });
+    t.appendChild(del);
+    box.appendChild(t);
+  });
+}
+function renderCapPreview(){
+  const box = $("cap-preview"); box.innerHTML = "";
+  capCards.forEach((c,i)=>{
+    const row = document.createElement("div");
+    row.className = "citem";
+    row.innerHTML = `<div class="qa"><b>${esc(c.q)}</b><span>${esc(c.a)}</span></div>`;
+    const del = document.createElement("button");
+    del.textContent = "🗑";
+    del.addEventListener("click",()=>{ capCards.splice(i,1); renderCapPreview(); });
+    row.appendChild(del);
+    box.appendChild(row);
+  });
+  $("cap-add").style.display = capCards.length ? "" : "none";
+  $("cap-add").textContent = `この${capCards.length}枚をデッキに追加`;
+}
+
+function addCapFile(file){
+  if(!file || !file.type.startsWith("image/")) return;
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = ()=>{
+    const MAX = 1400;
+    const sc = Math.min(1, MAX/Math.max(img.width, img.height));
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    const dataUrl = cv.toDataURL("image/jpeg", 0.85);
+    capImages.push({data: dataUrl.split(",")[1], mediaType:"image/jpeg", url: dataUrl});
+    URL.revokeObjectURL(url);
+    renderCapThumbs();
+  };
+  img.src = url;
+}
+$("cap-drop").addEventListener("click", ()=>$("cap-file").click());
+$("cap-file").addEventListener("change", (ev)=>{
+  [...ev.target.files].forEach(addCapFile);
+  ev.target.value = "";
+});
+["dragover","dragleave","drop"].forEach(evt=>{
+  $("cap-drop").addEventListener(evt,(e)=>{
+    e.preventDefault();
+    $("cap-drop").classList.toggle("drag", evt==="dragover");
+    if(evt==="drop") [...e.dataTransfer.files].forEach(addCapFile);
+  });
+});
+// Global paste: Ctrl/Cmd+V anywhere with an image opens the capture modal
+document.addEventListener("paste",(e)=>{
+  const items = [...(e.clipboardData ? e.clipboardData.items : [])]
+    .filter(i=>i.type.startsWith("image/"));
+  if(!items.length) return;
+  e.preventDefault();
+  if(!$("m-capture").classList.contains("open")) openCapture();
+  items.forEach(i=>addCapFile(i.getAsFile()));
+});
+
+$("cap-extract").addEventListener("click", async ()=>{
+  const key = state.settings.apiKey;
+  const errEl = $("cap-err"); errEl.textContent = "";
+  if(!key){ errEl.textContent = "設定画面でAnthropic APIキーを登録してください"; return; }
+  if(!capImages.length){ errEl.textContent = "画像を追加してください"; return; }
+  const btn = $("cap-extract");
+  btn.innerHTML = `<span class="spinner"></span>抽出中…`; btn.disabled = true;
+  try{
+    const content = capImages.map(im=>({
+      type:"image", source:{type:"base64", media_type:im.mediaType, data:im.data}
+    }));
+    content.push({type:"text", text:
+`この画像（画面キャプチャ）から、日本人学習者が覚える価値のある単語・用語を抽出して暗記カードにしてください。
+- 英単語なら q=英単語, a=日本語の意味（短く）
+- 日本語の専門用語なら q=用語, a=短い意味
+- UIのボタン名・メニュー等の無意味な文字列は除外
+- 3択クイズに使うので答えは単語〜短フレーズで
+- catは品詞: 名詞="n", 動詞="v", 形容詞="adj", その他="other"
+- exはその単語の用法がわかる平易な英語の例文（10語前後）、exJaはその日本語訳。英単語でない場合はnull
+- partsは英単語の語源的な分解（例: ["ob","liter","ate"]。結合すると必ず元の綴りになること。短い語はnull）
+- 出力はJSON配列のみ。説明文は不要。
+形式: [{"q":"問題","a":"答え","cat":"n","ex":"例文","exJa":"訳","parts":["ob","liter","ate"]}, ...]`});
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key": key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify({
+        model:"claude-sonnet-5",
+        max_tokens: 2000,
+        messages:[{role:"user", content}]
+      })
+    });
+    if(!res.ok){
+      const e = await res.json().catch(()=>({}));
+      throw new Error((e.error&&e.error.message) || ("HTTP "+res.status));
+    }
+    const data = await res.json();
+    const raw = data.content.map(b=>b.text||"").join("");
+    const m = raw.match(/\[[\s\S]*\]/);
+    if(!m) throw new Error("単語を抽出できませんでした");
+    const arr = JSON.parse(m[0]);
+    capCards = arr.filter(c=>c.q&&c.a).map(c=>({id:uid(), q:String(c.q), a:String(c.a),
+      cat:["n","v","adj","other"].includes(c.cat)?c.cat:null,
+      ex:c.ex?String(c.ex):null, exJa:c.exJa?String(c.exJa):null,
+      parts:(Array.isArray(c.parts)&&c.parts.length>1&&c.parts.join("").toLowerCase()===String(c.q).toLowerCase())?c.parts.map(String):null}));
+    if(!capCards.length) throw new Error("単語が見つかりませんでした");
+    renderCapPreview();
+  }catch(e){
+    errEl.textContent = "抽出に失敗: "+e.message;
+  }finally{
+    btn.innerHTML = "✨ AIで単語を抽出"; btn.disabled = false;
+  }
+});
+
+$("cap-add").addEventListener("click",()=>{
+  if(!capCards.length) return;
+  let deck;
+  const v = $("cap-deck").value;
+  if(v === "__new"){
+    deck = {id:uid(), name:"スクショ単語帳", emoji:"📷", builtin:false, capture:true, cards:[]};
+    state.decks.push(deck);
+  }else{
+    deck = getDeck(v);
+    if(!deck) return;
+  }
+  // skip duplicates (same q already in deck)
+  const existing = new Set(deck.cards.map(c=>c.q.toLowerCase()));
+  let added = 0;
+  capCards.forEach(c=>{
+    if(existing.has(c.q.toLowerCase())) return;
+    deck.cards.push(c); existing.add(c.q.toLowerCase()); added++;
+  });
+  save();
+  $("m-capture").classList.remove("open");
+  renderHome();
+  alert(`「${deck.name}」に${added}枚追加しました${added<capCards.length?`（重複${capCards.length-added}枚はスキップ）`:""}`);
+});
+
+/* ---------------- BGM (YouTube mini player) ---------------- */
+function parseYT(url){
+  url = (url||"").trim();
+  if(!url) return null;
+  let m = url.match(/[?&]list=([\w-]+)/);
+  if(m) return {type:"list", id:m[1]};
+  m = url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/);
+  if(m) return {type:"video", id:m[1]};
+  if(/^[\w-]{11}$/.test(url)) return {type:"video", id:url};
+  return null;
+}
+function toggleBGM(){
+  const box = $("bgm");
+  if(box.style.display !== "none"){   // stop
+    box.style.display = "none";
+    $("bgm-frame").innerHTML = "";
+    return;
+  }
+  const p = parseYT(state.settings.bgmUrl);
+  if(!p){
+    renderSettings(); openModal("m-settings");
+    $("set-bgm").focus();
+    return;
+  }
+  const src = p.type==="list"
+    ? `https://www.youtube.com/embed/videoseries?list=${p.id}&autoplay=1&loop=1`
+    : `https://www.youtube.com/embed/${p.id}?autoplay=1&loop=1&playlist=${p.id}`;
+  $("bgm-frame").innerHTML =
+    `<iframe src="${src}" style="border:0;width:100%;height:100%" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+  box.style.display = "";
+}
+$("btn-bgm").addEventListener("click", toggleBGM);
+$("bgm-close").addEventListener("click", toggleBGM);
+
+/* ---------------- Settings ---------------- */
+function renderSettings(){
+  $("sw-voice").classList.toggle("on", state.settings.voice);
+  $("sw-sound").classList.toggle("on", state.settings.sound);
+  $("set-apikey").value = state.settings.apiKey||"";
+  $("set-bgm").value = state.settings.bgmUrl||"";
+}
+$("btn-settings").addEventListener("click",()=>{ renderSettings(); openModal("m-settings"); });
+$("sw-voice").addEventListener("click",()=>{ state.settings.voice=!state.settings.voice; renderSettings(); save(); });
+$("sw-sound").addEventListener("click",()=>{ state.settings.sound=!state.settings.sound; renderSettings(); save(); });
+$("set-apikey").addEventListener("change",()=>{ state.settings.apiKey=$("set-apikey").value.trim(); save(); });
+$("set-bgm").addEventListener("change",()=>{ state.settings.bgmUrl=$("set-bgm").value.trim(); save(); });
+$("btn-theme").addEventListener("click",()=>{
+  state.settings.theme = state.settings.theme==="dark" ? "light" : "dark";
+  applyTheme(); save();
+});
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", state.settings.theme);
+}
+$("btn-export").addEventListener("click",()=>{
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "daily-memory-backup.json";
+  a.click();
+});
+$("btn-import").addEventListener("click",()=>$("importfile").click());
+$("importfile").addEventListener("change",(ev)=>{
+  const f = ev.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const s = JSON.parse(r.result);
+      if(!s.decks) throw new Error("bad");
+      Object.assign(state, s);
+      save(); applyTheme(); renderHome(); renderSettings();
+      alert("読み込みました");
+    }catch(e){ alert("読み込みに失敗しました"); }
+  };
+  r.readAsText(f);
+});
+
+/* ---------------- Game nav ---------------- */
+$("btn-quit").addEventListener("click",()=>{
+  if(confirm("ゲームを中断しますか？（このセッションの進捗は保存されません）")){
+    clearInterval(timerInt); stopDrillAudio(); game=null; renderHome(); show("scr-home");
+  }
+});
+$("btn-again").addEventListener("click",()=>startGame(game.deckId));
+$("btn-strengthen").addEventListener("click",()=>{
+  if(!strengthenList.length) return;
+  strengthenIdx = 0;
+  openVisual(strengthenList[0], true);
+});
+$("btn-home").addEventListener("click",()=>{ renderHome(); show("scr-home"); });
+$("qcard").addEventListener("click",()=>{
+  if(game && game.queue.length) speak(game.queue[0].card.q);
+});
+
+/* ---------------- Init ---------------- */
+applyTheme();
+renderHome();
+save();
+</script>
+</body>
+</html>
