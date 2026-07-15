@@ -233,9 +233,27 @@ body::after{
 .sp-ringbox i:nth-child(2){border-color:var(--accent2);animation-delay:.35s;}
 .sp-ringbox i:nth-child(3){border-color:var(--gold);animation-delay:.7s;}
 @keyframes spRing{0%{transform:scale(.3);opacity:.9}100%{transform:scale(3);opacity:0}}
-.sp-brain{font-size:88px;line-height:1;animation:spBrain 1s cubic-bezier(.2,1.5,.4,1) both;
-  filter:drop-shadow(0 0 24px rgba(108,140,255,.65));}
-@keyframes spBrain{0%{transform:scale(0) rotate(-200deg);opacity:0}65%{transform:scale(1.18) rotate(10deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+/* バディ: 駆け込んできて「あそぼっ！」と誘う */
+.sp-scene{position:relative;animation:spDashIn .7s cubic-bezier(.2,1.2,.4,1) both;
+  filter:drop-shadow(0 0 26px rgba(108,140,255,.5));}
+@keyframes spDashIn{from{transform:translateX(-46vw) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
+.sp-buddy{animation:spHop .55s .75s ease-in-out infinite alternate;}
+@keyframes spHop{from{transform:translateY(0)}to{transform:translateY(-7px)}}
+.sp-buddy .arm-wave{transform-box:fill-box;transform-origin:90% 95%;
+  animation:spWave .45s .8s ease-in-out infinite alternate;}
+@keyframes spWave{from{transform:rotate(2deg)}to{transform:rotate(-22deg)}}
+.sp-buddy .arm-reach{animation:spReach .5s .8s ease-in-out infinite alternate;}
+@keyframes spReach{from{transform:translate(0,0)}to{transform:translate(6px,4px)}}
+.sp-buddy .leg.l1{animation:spLeg .3s .75s ease-in-out infinite alternate;}
+.sp-buddy .leg.l2{animation:spLeg .3s .9s ease-in-out infinite alternate;}
+@keyframes spLeg{from{transform:translateY(0)}to{transform:translateY(-5px)}}
+.sp-buddy .dash line{animation:spDashLine .5s .75s ease-in-out infinite alternate;}
+@keyframes spDashLine{from{opacity:.65}to{opacity:.15}}
+.sp-bubble{position:absolute;top:-38px;right:-42px;background:#fff;color:#1b2340;
+  font-size:16px;font-weight:800;padding:9px 15px;border-radius:18px;white-space:nowrap;
+  animation:spGo .45s .85s cubic-bezier(.2,1.6,.4,1) both;z-index:2;}
+.sp-bubble::after{content:"";position:absolute;bottom:-8px;left:34px;
+  border:9px solid transparent;border-top-color:#fff;border-bottom:0;}
 .sp-title{font-size:42px;font-weight:800;animation:spUp .6s .45s ease both;}
 .sp-title span{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
 .sp-sub{letter-spacing:4px;color:var(--sub);font-size:12px;font-weight:700;animation:spUp .6s .8s ease both;}
@@ -254,10 +272,39 @@ body::after{
 <!-- ============ OPENING SPLASH ============ -->
 <div id="splash">
   <div class="sp-ringbox"><i></i><i></i><i></i></div>
-  <div class="sp-brain">🧠</div>
+  <div class="sp-scene">
+    <div class="sp-bubble">きょうも あそぼっ！</div>
+    <svg class="sp-buddy" viewBox="0 0 230 175" width="235" height="179" aria-label="バディ">
+      <defs>
+        <linearGradient id="bgrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#6c8cff"/><stop offset="1" stop-color="#9b6cff"/>
+        </linearGradient>
+      </defs>
+      <g class="dash" stroke="#8b96b8" stroke-width="5" stroke-linecap="round" opacity=".6">
+        <line x1="12" y1="62" x2="46" y2="62"/>
+        <line x1="2" y1="88" x2="40" y2="88"/>
+        <line x1="16" y1="114" x2="50" y2="114"/>
+      </g>
+      <ellipse class="leg l1" cx="98" cy="152" rx="13" ry="9" fill="#5a74e8"/>
+      <ellipse class="leg l2" cx="133" cy="155" rx="13" ry="9" fill="#8a5ce8"/>
+      <g class="arm-wave">
+        <path d="M78 72 Q 60 54 54 40" fill="none" stroke="#7d92ff" stroke-width="11" stroke-linecap="round"/>
+        <circle cx="53" cy="37" r="10" fill="#7d92ff"/>
+      </g>
+      <ellipse cx="115" cy="95" rx="54" ry="50" fill="url(#bgrad)"/>
+      <g class="arm-reach">
+        <path d="M162 98 Q 186 106 202 118" fill="none" stroke="#9b6cff" stroke-width="11" stroke-linecap="round"/>
+        <circle cx="205" cy="121" r="11" fill="#9b6cff"/>
+      </g>
+      <circle cx="99" cy="88" r="9" fill="#fff"/><circle cx="101" cy="89" r="4.5" fill="#1b2340"/><circle cx="103" cy="87" r="1.6" fill="#fff"/>
+      <circle cx="133" cy="88" r="9" fill="#fff"/><circle cx="135" cy="89" r="4.5" fill="#1b2340"/><circle cx="137" cy="87" r="1.6" fill="#fff"/>
+      <path d="M103 110 Q 116 122 131 109" fill="none" stroke="#1b2340" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="88" cy="103" r="6" fill="#ff8cc8" opacity=".55"/>
+      <circle cx="145" cy="103" r="6" fill="#ff8cc8" opacity=".55"/>
+    </svg>
+  </div>
   <div class="sp-title">Daily <span>Memory</span></div>
   <div class="sp-sub">PLAY & REMEMBER, EVERY DAY</div>
-  <div class="sp-go">⚡ READY?</div>
   <div class="sp-skip">タップでスキップ</div>
 </div>
 
