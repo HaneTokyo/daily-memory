@@ -249,6 +249,10 @@ body::after{
   <div style="height:14px"></div>
   <button class="bigbtn" id="btn-capture">📷 スクショから単語を取り込む</button>
   <button class="addDeck" id="btn-adddeck">＋ 新しいデッキを作る（AI生成対応）</button>
+  <div class="row" style="margin-top:14px">
+    <button class="bigbtn ghost" id="btn-store">🛍️ デッキを買う</button>
+    <button class="bigbtn ghost" id="btn-code">🔑 コードで追加</button>
+  </div>
   <div style="height:10px"></div>
   <button class="bigbtn ghost" id="btn-invite">🤝 友達を招待して記憶バトル</button>
 </div>
@@ -347,8 +351,22 @@ body::after{
     <div class="cardlist" id="dd-cards"></div>
     <div class="row">
       <button class="bigbtn ghost" id="dd-addcard">＋ カード追加</button>
-      <button class="bigbtn ghost" id="dd-delete" style="color:var(--bad)">デッキ削除</button>
+      <button class="bigbtn ghost" id="dd-export">📤 コード書き出し</button>
+      <button class="bigbtn ghost" id="dd-delete" style="color:var(--bad)">削除</button>
     </div>
+    <div style="height:10px"></div>
+    <button class="bigbtn ghost" data-close>閉じる</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: deck code import ============ -->
+<div class="modal" id="m-code">
+  <div class="sheet">
+    <h2>🔑 デッキコードで追加</h2>
+    <p class="desc">購入したデッキコードや、友達がくれたコード・リンクを貼り付けてください。</p>
+    <div class="field"><textarea id="dc-text" placeholder="DMDK1. で始まるコード、またはデッキリンクURL"></textarea></div>
+    <button class="bigbtn" id="dc-add">デッキを追加</button>
+    <div class="err" id="dc-err"></div>
     <div style="height:10px"></div>
     <button class="bigbtn ghost" data-close>閉じる</button>
   </div>
@@ -1868,8 +1886,74 @@ $("ch-accept").addEventListener("click",()=>{
   save(); renderHome();
   startGame(deck.id, {challenge:{n:p.n, s:p.s, avg:p.avg, acc:p.acc}});
 });
+/* ---- デッキコード（販売・共有用） ---- */
+const STORE_URL = "https://hanetokyo.booth.pm/";   // ★ショップ開設後に実URLへ差し替え
+const DECK_CODE_PREFIX = "DMDK1.";
+$("btn-store").addEventListener("click", ()=>window.open(STORE_URL, "_blank"));
+$("btn-code").addEventListener("click", ()=>{
+  $("dc-err").textContent = ""; $("dc-text").value = "";
+  openModal("m-code");
+});
+function deckToCode(deck){
+  return DECK_CODE_PREFIX + b64enc({v:1, t:"deck", n:deck.name, e:deck.emoji||"📚",
+    cards: deck.cards.map(c=>({q:c.q, a:c.a, cat:c.cat||null, ex:c.ex||null, exJa:c.exJa||null, parts:c.parts||null}))});
+}
+function installDeckFromPayload(p){
+  if(!p || p.t!=="deck" || !Array.isArray(p.cards)) return null;
+  const cards = p.cards.filter(c=>c.q&&c.a).map(c=>({id:uid(), q:String(c.q), a:String(c.a),
+    cat:c.cat||null, ex:c.ex||null, exJa:c.exJa||null, parts:Array.isArray(c.parts)?c.parts:null}));
+  if(cards.length < 3) return null;
+  let name = String(p.n || "もらったデッキ").slice(0,40);
+  const existing = state.decks.find(d=>d.name===name);
+  if(existing){
+    if(confirm(`「${name}」は既にあります。新しい内容で上書きしますか？\n（キャンセルすると別名で追加します）`)){
+      existing.cards = cards; existing.emoji = p.e || existing.emoji;
+      save(); renderHome(); return existing;
+    }
+    let i = 2; while(state.decks.find(d=>d.name===`${name} (${i})`)) i++;
+    name = `${name} (${i})`;
+  }
+  const deck = {id:uid(), name, emoji:p.e||"📚", builtin:false, cards};
+  state.decks.push(deck); save(); renderHome();
+  return deck;
+}
+$("dc-add").addEventListener("click", ()=>{
+  let s = $("dc-text").value.trim();
+  const errEl = $("dc-err");
+  const mLink = s.match(/#d=([\w\-]+)/);
+  const mCode = s.match(/DMDK1\.([\w\-]+)/);
+  const raw = mLink ? mLink[1] : mCode ? mCode[1] : s.replace(/\s+/g,"");
+  const deck = installDeckFromPayload(b64dec(raw));
+  if(!deck){ errEl.textContent = "コードを読み取れませんでした。コード全体をコピーして貼り付けてください"; return; }
+  $("m-code").classList.remove("open");
+  alert(`🎁 デッキ「${deck.name}」（${deck.cards.length}枚）を追加しました！`);
+});
+$("dd-export").addEventListener("click", ()=>{
+  const d = getDeck(currentDeckId); if(!d) return;
+  const code = deckToCode(d);
+  const rawB64 = code.slice(DECK_CODE_PREFIX.length);
+  const link = rawB64.length < 6000 ? APP_URL + "#d=" + rawB64 : null;
+  const text = `🧠 Daily Memory デッキ「${d.name}」（${d.cards.length}枚）\n`
+    + (link ? `▼リンクで開くだけで追加:\n${link}\n\n` : "")
+    + `▼またはアプリの「🔑 コードで追加」にこのコードを貼り付け:\n${code}`;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text)
+      .then(()=>alert("デッキコードをコピーしました！\nBOOTHの商品ファイルや、友達へのメッセージに貼り付けられます📮"))
+      .catch(()=>prompt("コピーしてください:", text));
+  }else prompt("コピーしてください:", text);
+});
+
 function checkHashLinks(){
-  let m = location.hash.match(/#c=([\w\-]+)/);
+  // デッキリンク（#d=）: 開くだけでデッキが入る
+  let m = location.hash.match(/#d=([\w\-]+)/);
+  if(m){
+    const p = b64dec(m[1]);
+    history.replaceState(null, "", location.pathname + location.search);
+    const deck = installDeckFromPayload(p);
+    if(deck) setTimeout(()=>alert(`🎁 デッキ「${deck.name}」（${deck.cards.length}枚）を受け取りました！\nホームから遊べます`), 300);
+    return;
+  }
+  m = location.hash.match(/#c=([\w\-]+)/);
   if(m){
     const p = b64dec(m[1]);
     history.replaceState(null, "", location.pathname + location.search);
