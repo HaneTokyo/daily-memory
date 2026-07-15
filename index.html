@@ -221,12 +221,45 @@ body::after{
 #bgm-close{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;
   background:rgba(0,0,0,.65);color:#fff;font-size:13px;cursor:pointer;z-index:2;}
 
+/* ---------- Opening splash ---------- */
+#splash{position:fixed;inset:0;z-index:100;cursor:pointer;
+  background:radial-gradient(700px 500px at 50% 40%, rgba(108,140,255,.25), transparent 70%), var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  transition:opacity .5s ease;}
+#splash.hide{opacity:0;pointer-events:none;}
+.sp-ringbox{position:absolute;left:50%;top:42%;width:0;height:0;}
+.sp-ringbox i{position:absolute;left:-70px;top:-70px;width:140px;height:140px;border-radius:50%;
+  border:2px solid var(--accent);opacity:0;animation:spRing 1.5s ease-out infinite;}
+.sp-ringbox i:nth-child(2){border-color:var(--accent2);animation-delay:.35s;}
+.sp-ringbox i:nth-child(3){border-color:var(--gold);animation-delay:.7s;}
+@keyframes spRing{0%{transform:scale(.3);opacity:.9}100%{transform:scale(3);opacity:0}}
+.sp-brain{font-size:88px;line-height:1;animation:spBrain 1s cubic-bezier(.2,1.5,.4,1) both;
+  filter:drop-shadow(0 0 24px rgba(108,140,255,.65));}
+@keyframes spBrain{0%{transform:scale(0) rotate(-200deg);opacity:0}65%{transform:scale(1.18) rotate(10deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+.sp-title{font-size:42px;font-weight:800;animation:spUp .6s .45s ease both;}
+.sp-title span{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.sp-sub{letter-spacing:4px;color:var(--sub);font-size:12px;font-weight:700;animation:spUp .6s .8s ease both;}
+.sp-go{margin-top:14px;font-size:20px;font-weight:800;color:var(--gold);animation:spGo .5s 1.5s ease both;}
+@keyframes spUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+@keyframes spGo{from{opacity:0;transform:scale(.5)}70%{transform:scale(1.2)}to{opacity:1;transform:scale(1)}}
+.sp-skip{position:absolute;bottom:26px;color:var(--sub);font-size:12px;animation:spUp .6s 1.4s ease both;}
+
 /* ---------- Confetti ---------- */
 .confetti{position:fixed;top:-20px;font-size:20px;z-index:99;pointer-events:none;animation:cfall linear forwards;}
 @keyframes cfall{to{transform:translateY(110dvh) rotate(720deg);opacity:.6;}}
 </style>
 </head>
 <body>
+
+<!-- ============ OPENING SPLASH ============ -->
+<div id="splash">
+  <div class="sp-ringbox"><i></i><i></i><i></i></div>
+  <div class="sp-brain">🧠</div>
+  <div class="sp-title">Daily <span>Memory</span></div>
+  <div class="sp-sub">PLAY & REMEMBER, EVERY DAY</div>
+  <div class="sp-go">⚡ READY?</div>
+  <div class="sp-skip">タップでスキップ</div>
+</div>
 
 <!-- ============ HOME ============ -->
 <div class="screen active" id="scr-home">
@@ -1973,6 +2006,19 @@ applyTheme();
 renderHome();
 save();
 checkHashLinks();
+// オープニング（約3秒・タップでスキップ）
+(function(){
+  const sp = $("splash");
+  if(!sp) return;
+  let gone = false;
+  const dismiss = ()=>{
+    if(gone) return; gone = true;
+    sp.classList.add("hide");
+    setTimeout(()=>sp.remove(), 600);
+  };
+  sp.addEventListener("click", dismiss);
+  setTimeout(dismiss, 3200);
+})();
 </script>
 </body>
 </html>
