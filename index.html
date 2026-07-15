@@ -249,6 +249,8 @@ body::after{
   <div style="height:14px"></div>
   <button class="bigbtn" id="btn-capture">📷 スクショから単語を取り込む</button>
   <button class="addDeck" id="btn-adddeck">＋ 新しいデッキを作る（AI生成対応）</button>
+  <div style="height:10px"></div>
+  <button class="bigbtn ghost" id="btn-invite">🤝 友達を招待して記憶バトル</button>
 </div>
 
 <!-- ============ GAME ============ -->
@@ -306,6 +308,7 @@ body::after{
   </div>
   <div class="cardresults" id="r-cards"></div>
   <button class="bigbtn" id="btn-strengthen" style="display:none">🧠 記憶強化モード — 間違えた単語を画像と動画で</button>
+  <button class="bigbtn" id="btn-challenge">⚔️ この結果で友達に挑戦状を送る</button>
   <button class="bigbtn" id="btn-again">▶ 続けて次のカードへ</button>
   <button class="bigbtn ghost" id="btn-home">ホームに戻る</button>
 </div>
@@ -348,6 +351,22 @@ body::after{
     </div>
     <div style="height:10px"></div>
     <button class="bigbtn ghost" data-close>閉じる</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: challenge received ============ -->
+<div class="modal" id="m-challenge">
+  <div class="sheet">
+    <h2>⚔️ 挑戦状が届きました！</h2>
+    <p class="desc" id="ch-desc"></p>
+    <div class="resultgrid">
+      <div class="rstat"><b id="ch-score">-</b><span>相手のスコア</span></div>
+      <div class="rstat"><b id="ch-avg">-</b><span>相手の平均速度</span></div>
+    </div>
+    <button class="bigbtn" id="ch-accept">🔥 受けて立つ</button>
+    <div class="notice">同じカード・同じルールで勝負。相手のスコアを超えたら勝利です。カードはあなたのデッキにも追加されます。</div>
+    <div style="height:10px"></div>
+    <button class="bigbtn ghost" data-close>あとで</button>
   </div>
 </div>
 
@@ -732,13 +751,14 @@ function pickSessionCards(deck){
   return due.concat(nw, rest).slice(0, SESSION_SIZE).map(x=>x.c);
 }
 
-function startGame(deckId){
+function startGame(deckId, opts){
   const deck = getDeck(deckId);
   if(!deck || deck.cards.length < 3){ alert("このデッキには3枚以上のカードが必要です"); return; }
   const cards = shuffle(pickSessionCards(deck));
   if(!cards.length){ alert("このデッキのカードはすべて習得済み（😎知ってた）です！"); return; }
   game = {
     deckId,
+    challenge: (opts && opts.challenge) || null,   // 挑戦状モード
     queue: cards.map(c=>({card:c, successes:0, errors:0, times:[], track:"normal", asked:false, known:false})),
     total: cards.length,
     graduated: [],
@@ -856,8 +876,8 @@ function answer(btn, correct){
       ? `<span class="fast">⚡ FAST! ${t.toFixed(1)}s +${pts}</span>`
       : `<span class="good">✓ 正解 +${pts}</span>`;
     item.successes++;
-    // 即答なら「知ってた？」を確認（初正解・ノーミスのカードのみ、一度だけ）
-    if(t < FAST_T && item.successes===1 && item.errors===0 && !item.asked){
+    // 即答なら「知ってた？」を確認（初正解・ノーミスのカードのみ、一度だけ。挑戦状モードでは公平のため無し）
+    if(!game.challenge && t < FAST_T && item.successes===1 && item.errors===0 && !item.asked){
       item.asked = true;
       setTimeout(()=>showKnowAsk(item), 450);
       return;
@@ -1096,9 +1116,23 @@ function endGame(){
   $("r-acc").textContent = acc+"%";
   $("r-avg").textContent = avg.toFixed(1)+"s";
   $("r-best").textContent = (game.best||0).toFixed(1)+"s";
-  $("r-emoji").textContent = acc>=90 ? "🏆" : acc>=70 ? "🎉" : "💪";
-  $("r-title").textContent = acc>=90 ? "パーフェクトに近い！" : acc>=70 ? "クリア！" : "よくがんばった！";
-  $("r-sub").textContent = `${game.total}枚のカードを習得 — 間隔を空けて復習すると長期記憶に定着します`;
+  // 挑戦状用に直近の結果を保存
+  lastResult = {score:game.score, avg:+avg.toFixed(1), acc,
+    deckName:(getDeck(game.deckId)||{}).name||"デッキ",
+    cards:game.graduated.map(it=>({q:it.card.q,a:it.card.a,cat:it.card.cat||null,ex:it.card.ex||null,exJa:it.card.exJa||null,parts:it.card.parts||null}))};
+  if(game.challenge){
+    const ch = game.challenge;
+    const win = game.score > ch.s;
+    $("r-emoji").textContent = win ? "🏆" : "😤";
+    $("r-title").textContent = win ? `${ch.n}さんに勝利！` : `${ch.n}さんの勝ち…リベンジだ！`;
+    $("r-sub").textContent = `あなた: ${game.score}点・平均${avg.toFixed(1)}s・正答率${acc}%  ／  ${ch.n}さん: ${ch.s}点・平均${ch.avg}s・正答率${ch.acc}%`;
+    $("btn-challenge").textContent = win ? "⚔️ 勝利の挑戦状を送り返す" : "⚔️ 別の友達に挑戦状を送る";
+  }else{
+    $("r-emoji").textContent = acc>=90 ? "🏆" : acc>=70 ? "🎉" : "💪";
+    $("r-title").textContent = acc>=90 ? "パーフェクトに近い！" : acc>=70 ? "クリア！" : "よくがんばった！";
+    $("r-sub").textContent = `${game.total}枚のカードを習得 — 間隔を空けて復習すると長期記憶に定着します`;
+    $("btn-challenge").textContent = "⚔️ この結果で友達に挑戦状を送る";
+  }
   const list = $("r-cards"); list.innerHTML="";
   game.graduated.forEach(it=>{
     const avgT = it.times.length ? it.times.reduce((a,b)=>a+b,0)/it.times.length : 0;
@@ -1763,10 +1797,98 @@ $("qcard").addEventListener("click",()=>{
   if(game && game.queue.length) speak(game.queue[0].card.q);
 });
 
+/* ================================================================
+   SOCIAL: 挑戦状 & 友達招待（サーバー不要のリンク方式）
+================================================================ */
+const APP_URL = location.protocol.startsWith("http")
+  ? location.origin + location.pathname
+  : "https://hanetokyo.github.io/daily-memory/";
+let lastResult = null, pendingChallenge = null;
+
+function b64enc(obj){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
+    .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function b64dec(s){
+  try{ return JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,"+").replace(/_/g,"/"))))); }
+  catch(e){ return null; }
+}
+function getNick(){
+  if(state.settings.nick) return state.settings.nick;
+  const n = prompt("ニックネームを決めてください（挑戦状・招待に表示されます）");
+  if(n && n.trim()){ state.settings.nick = n.trim().slice(0,12); save(); }
+  return state.settings.nick || "名無しの記憶王";
+}
+function shareText(text, url){
+  const full = text + "\n" + url;
+  if(navigator.share){
+    navigator.share({text: text, url: url}).catch(()=>{});
+  }else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(full)
+      .then(()=>alert("メッセージをコピーしました！\nLINEやメールに貼り付けて送ってください📮"))
+      .catch(()=>prompt("このメッセージをコピーして送ってください:", full));
+  }else{
+    prompt("このメッセージをコピーして送ってください:", full);
+  }
+}
+// ⚔️ 挑戦状を送る（直近のゲーム結果 + 同じカードを同梱）
+$("btn-challenge").addEventListener("click",()=>{
+  if(!lastResult || !lastResult.cards.length) return;
+  const nick = getNick();
+  const payload = {v:1, n:nick, s:lastResult.score, avg:lastResult.avg, acc:lastResult.acc,
+                   d:lastResult.deckName, cards:lastResult.cards};
+  shareText(`⚔️ ${nick}から挑戦状！\n🧠Daily Memory「${payload.d}」\nスコア${payload.s}点・平均${payload.avg}秒を超えられるか？`,
+            APP_URL + "#c=" + b64enc(payload));
+});
+// 🤝 友達を招待
+$("btn-invite").addEventListener("click",()=>{
+  const nick = getNick();
+  shareText(`🧠 30秒で遊べる記憶ゲーム「Daily Memory」！\n${nick}と一緒に記憶バトルしよう🔥`,
+            APP_URL + "#i=" + b64enc({n:nick}));
+});
+// 受信側: URLの #c=（挑戦状） / #i=（招待）を処理
+function showChallengeModal(p){
+  pendingChallenge = p;
+  $("ch-desc").textContent = `${p.n}さんがデッキ「${p.d}」で記録を出しました。同じカードで挑戦しましょう！（正答率${p.acc}%）`;
+  $("ch-score").textContent = p.s + "点";
+  $("ch-avg").textContent = p.avg + "s";
+  openModal("m-challenge");
+}
+$("ch-accept").addEventListener("click",()=>{
+  const p = pendingChallenge;
+  if(!p) return;
+  $("m-challenge").classList.remove("open");
+  const name = `⚔️ ${p.n}さんの挑戦`;
+  let deck = state.decks.find(d=>d.name===name);
+  const cards = p.cards.map(c=>({id:uid(), q:String(c.q), a:String(c.a),
+    cat:c.cat||null, ex:c.ex||null, exJa:c.exJa||null,
+    parts:Array.isArray(c.parts)?c.parts:null}));
+  if(deck) deck.cards = cards;
+  else { deck = {id:uid(), name, emoji:"⚔️", builtin:false, cards}; state.decks.push(deck); }
+  save(); renderHome();
+  startGame(deck.id, {challenge:{n:p.n, s:p.s, avg:p.avg, acc:p.acc}});
+});
+function checkHashLinks(){
+  let m = location.hash.match(/#c=([\w\-]+)/);
+  if(m){
+    const p = b64dec(m[1]);
+    history.replaceState(null, "", location.pathname + location.search);
+    if(p && p.n && Array.isArray(p.cards) && p.cards.length>=3) showChallengeModal(p);
+    return;
+  }
+  m = location.hash.match(/#i=([\w\-]+)/);
+  if(m){
+    const p = b64dec(m[1]);
+    history.replaceState(null, "", location.pathname + location.search);
+    if(p && p.n) setTimeout(()=>alert(`🎉 ${p.n}さんからDaily Memoryに招待されました！\nまずは好きなデッキで1ゲームどうぞ🧠`), 400);
+  }
+}
+
 /* ---------------- Init ---------------- */
 applyTheme();
 renderHome();
 save();
+checkHashLinks();
 </script>
 </body>
 </html>
