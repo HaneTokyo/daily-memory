@@ -434,6 +434,7 @@ body::after{
       <button class="bigbtn ghost" id="dd-export">📤 コード書き出し</button>
       <button class="bigbtn ghost" id="dd-delete" style="color:var(--bad)">削除</button>
     </div>
+    <button class="bigbtn ghost" id="dd-reset">↺ ゼロモード — 記録をリセットして最初からテスト</button>
     <div style="height:10px"></div>
     <button class="bigbtn ghost" data-close>閉じる</button>
   </div>
@@ -986,6 +987,7 @@ function answer(btn, correct){
     game.combo = 0;
     item.errors++;
     item.successes = 0;
+    item.track = "recover";   // 以後は 2個後 → 4 → 8… の復帰トラック
     btn.classList.add("wrong");
     sndBad();
     // reveal the correct one
@@ -1134,14 +1136,20 @@ function startDrill(item){
   doRep();
 }
 
-/* correct answers are pushed further and further away:
-   normal: 5 -> 10 -> 20 ...   unsure(知らなかった): 4 -> 8 -> 16 ...
-   When the gap reaches beyond the remaining queue, the card graduates —
-   覚えているものを繰り返す必要はない */
+/* 出題ルール（骨子）:
+   ・初見で正解 → このセッションではもう出さない（覚えているものは繰り返さない）
+   ・間違えた → 2個後に再提示 → 正解なら4個後 → 8個後…と倍々で後回し
+                → また間違えたら2個後からやり直し
+   ・「🤔知らなかった」→ 4個後に再確認 → 正解なら8個後 → 16個後…
+   ・間隔が残りのキューを超えたら卒業（＝しばらく出さない。次はSRSが翌日以降に再登場させる）*/
 function routeCorrect(item){
+  if(item.track==="normal" && item.errors===0){   // 初見正解 → 即卒業
+    game.graduated.push(item);
+    return;
+  }
   const n = item.track==="unsure"
-    ? 4 * Math.pow(2, item.successes)        // 4の再確認後: 8, 16, 32…
-    : 5 * Math.pow(2, item.successes-1);     // 5, 10, 20…
+    ? 4 * Math.pow(2, item.successes)        // 再確認(4個後)の後: 8, 16…
+    : 4 * Math.pow(2, item.successes-1);     // ミスからの復帰: 4, 8, 16…
   if(n-1 > game.queue.length) game.graduated.push(item);  // 地平線の向こう＝卒業
   else insertAfter(item, n);
 }
@@ -1453,6 +1461,12 @@ $("dd-addcard").addEventListener("click",()=>{
   d.cards.push({id:uid(), q:q.trim(), a:a.trim()});
   save(); openDeck(currentDeckId);
 });
+$("dd-reset").addEventListener("click",()=>{
+  const d = getDeck(currentDeckId); if(!d) return;
+  if(!confirm(`「${d.name}」の学習記録（😎知ってた・復習スケジュール含む）をリセットして、ゼロから全カードをテストできるようにしますか？\n※カード自体は消えません`)) return;
+  d.cards.forEach(c=>delete state.progress[progKey(d.id, c.id)]);
+  save(); renderHome(); openDeck(currentDeckId);
+});
 $("dd-delete").addEventListener("click",()=>{
   if(!confirm("このデッキを削除しますか？")) return;
   state.decks = state.decks.filter(d=>d.id!==currentDeckId);
@@ -1460,6 +1474,33 @@ $("dd-delete").addEventListener("click",()=>{
   $("m-deck").classList.remove("open");
   renderHome();
 });
+
+/* ---------------- Anthropic API (過負荷時は自動リトライ) ---------------- */
+async function anthropicFetch(body){
+  for(let attempt = 0; attempt < 2; attempt++){
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key": state.settings.apiKey,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify(body)
+    });
+    if(res.ok) return res.json();
+    const e = await res.json().catch(()=>({}));
+    const msg = (e.error && e.error.message) || ("HTTP " + res.status);
+    const overloaded = res.status===429 || res.status===529 || /overload/i.test(msg);
+    if(overloaded && attempt===0){
+      await new Promise(r=>setTimeout(r, 3000));   // 3秒待って1回だけ再試行
+      continue;
+    }
+    throw new Error(overloaded
+      ? "AIサーバーが混み合っています（過負荷）。1〜2分おいてもう一度お試しください"
+      : msg);
+  }
+}
 
 /* ---------------- New deck ---------------- */
 $("btn-adddeck").addEventListener("click",()=>{
@@ -1497,15 +1538,7 @@ $("nd-ai").addEventListener("click", async ()=>{
   const btn = $("nd-ai");
   btn.innerHTML = `<span class="spinner"></span>生成中…`; btn.disabled=true;
   try{
-    const res = await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{
-        "content-type":"application/json",
-        "x-api-key": key,
-        "anthropic-version":"2023-06-01",
-        "anthropic-dangerous-direct-browser-access":"true"
-      },
-      body: JSON.stringify({
+    const data = await anthropicFetch({
         model:"claude-sonnet-5",
         max_tokens: 2000,
         messages:[{role:"user",content:
@@ -1520,13 +1553,7 @@ $("nd-ai").addEventListener("click", async ()=>{
 
 テキスト:
 ${text}`}]
-      })
-    });
-    if(!res.ok){
-      const e = await res.json().catch(()=>({}));
-      throw new Error((e.error&&e.error.message) || ("HTTP "+res.status));
-    }
-    const data = await res.json();
+      });
     const raw = data.content.map(b=>b.text||"").join("");
     const m = raw.match(/\[[\s\S]*\]/);
     if(!m) throw new Error("カードを抽出できませんでした");
@@ -1573,15 +1600,7 @@ $("nf-go").addEventListener("click", async ()=>{
   const btn = $("nf-go");
   btn.innerHTML = `<span class="spinner"></span>単語を抽出中…`; btn.disabled = true;
   try{
-    const res = await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{
-        "content-type":"application/json",
-        "x-api-key": key,
-        "anthropic-version":"2023-06-01",
-        "anthropic-dangerous-direct-browser-access":"true"
-      },
-      body: JSON.stringify({
+    const data = await anthropicFetch({
         model:"claude-sonnet-5",
         max_tokens: 3000,
         messages:[{role:"user",content:
@@ -1593,13 +1612,7 @@ $("nf-go").addEventListener("click", async ()=>{
 ${knownWords ? `- 次の単語は既に学習済みなので除外: ${knownWords}` : ""}
 - 出力はJSON配列のみ。説明文は不要。
 形式: [{"q":"単語","a":"意味","cat":"n","ex":"例文","exJa":"訳","parts":["ob","liter","ate"]}, ...]`}]
-      })
-    });
-    if(!res.ok){
-      const e = await res.json().catch(()=>({}));
-      throw new Error((e.error&&e.error.message) || ("HTTP "+res.status));
-    }
-    const data = await res.json();
+      });
     const raw = data.content.map(b=>b.text||"").join("");
     const m = raw.match(/\[[\s\S]*\]/);
     if(!m) throw new Error("単語を抽出できませんでした");
@@ -1742,25 +1755,11 @@ $("cap-extract").addEventListener("click", async ()=>{
 - partsは英単語の語源的な分解（例: ["ob","liter","ate"]。結合すると必ず元の綴りになること。短い語はnull）
 - 出力はJSON配列のみ。説明文は不要。
 形式: [{"q":"問題","a":"答え","cat":"n","ex":"例文","exJa":"訳","parts":["ob","liter","ate"]}, ...]`});
-    const res = await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{
-        "content-type":"application/json",
-        "x-api-key": key,
-        "anthropic-version":"2023-06-01",
-        "anthropic-dangerous-direct-browser-access":"true"
-      },
-      body: JSON.stringify({
+    const data = await anthropicFetch({
         model:"claude-sonnet-5",
         max_tokens: 2000,
         messages:[{role:"user", content}]
-      })
-    });
-    if(!res.ok){
-      const e = await res.json().catch(()=>({}));
-      throw new Error((e.error&&e.error.message) || ("HTTP "+res.status));
-    }
-    const data = await res.json();
+      });
     const raw = data.content.map(b=>b.text||"").join("");
     const m = raw.match(/\[[\s\S]*\]/);
     if(!m) throw new Error("単語を抽出できませんでした");
