@@ -335,6 +335,7 @@ body::after{
   </div>
   <div style="height:10px"></div>
   <button class="bigbtn ghost" id="btn-invite">🤝 友達を招待して記憶バトル</button>
+  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v1.8</p>
 </div>
 
 <!-- ============ GAME ============ -->
@@ -847,7 +848,10 @@ function pickSessionCards(deck){
   const nw   = shuffle(withMeta.filter(x=>x.isNew));
   const rest = shuffle(withMeta.filter(x=>!x.isNew && !x.isDue))
                .sort((a,b)=>(a.p.due||0)-(b.p.due||0));
-  return due.concat(nw, rest).slice(0, SESSION_SIZE).map(x=>x.c);
+  // 新規・復習カードがある限り、学習済みカードで埋めない（同じ単語ばかり感の防止）
+  let pick = due.concat(nw);
+  if(pick.length === 0) pick = rest;   // 全部習得済み → 総復習モード
+  return pick.slice(0, SESSION_SIZE).map(x=>x.c);
 }
 
 function startGame(deckId, opts){
