@@ -335,7 +335,7 @@ body::after{
   </div>
   <div style="height:10px"></div>
   <button class="bigbtn ghost" id="btn-invite">🤝 友達を招待して記憶バトル</button>
-  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v1.8</p>
+  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v1.9</p>
 </div>
 
 <!-- ============ GAME ============ -->
@@ -593,6 +593,7 @@ if(!state.decks.length) state.decks = builtinDecks();
 builtinDecks().forEach(bd=>{
   const cur = state.decks.find(d=>d.id===bd.id);
   if(!cur){ state.decks.push(bd); return; }
+  cur.name = bd.name; cur.emoji = bd.emoji;   // 名称・アイコンも最新化
   bd.cards.forEach(bc=>{
     const cc = cur.cards.find(c=>c.id===bc.id);
     if(cc) Object.assign(cc, bc);
@@ -661,7 +662,7 @@ function builtinDecks(){
       ["plethora","過多","n","We have a plethora of options.","選択肢はあり余るほどある。",["pleth","ora"]],
       ["reprisal","報復","n","They feared reprisals from the regime.","彼らは政権からの報復を恐れた。",["re","pris","al"]],
       ["zenith","頂点","n","His career reached its zenith in 2020.","彼のキャリアは2020年に頂点に達した。",["ze","nith"]]]),
-    mk("biz20","ビジネス英単語 20","💼",[
+    mk("biz20","ビジネス英単語① 基本","💼",[
       ["leverage","活用する","v","We can leverage our brand to enter new markets.","ブランドを活用して新市場に参入できる。",["lever","age"]],
       ["streamline","効率化する","v","We streamlined the approval process.","承認プロセスを効率化した。",["stream","line"]],
       ["delegate","委任する","v","A good manager delegates tasks effectively.","良い管理職は仕事を上手に委任する。",["de","leg","ate"]],
@@ -682,6 +683,90 @@ function builtinDecks(){
       ["tentative","暫定の","adj","We set a tentative schedule for the launch.","発売の暫定スケジュールを組んだ。",["tent","ative"]],
       ["confidential","機密の","adj","Please keep this information confidential.","この情報は機密扱いでお願いします。",["con","fid","ential"]],
       ["mandatory","義務的な","adj","Attendance at the training is mandatory.","研修への出席は必須です。",["mand","atory"]]]),
+    mk("biz2","ビジネス英単語② 会議・交渉","🤝",[
+      ["negotiate","交渉する","v","We negotiated a better price with the vendor.","業者ともっと良い価格を交渉した。",["negoti","ate"]],
+      ["postpone","延期する","v","The meeting was postponed until next week.","会議は来週に延期された。",["post","pone"]],
+      ["clarify","明確にする","v","Could you clarify this point?","この点を明確にしてもらえますか。",["clar","ify"]],
+      ["facilitate","進行を促す","v","She facilitated the discussion smoothly.","彼女は議論を円滑に進行させた。",["facilit","ate"]],
+      ["compromise","妥協する","v","Both sides agreed to compromise.","双方が妥協することで合意した。",["com","promise"]],
+      ["persuade","説得する","v","He persuaded the client to renew the contract.","彼は顧客を説得して契約を更新させた。",["per","suade"]],
+      ["adjourn","休会する","v","The meeting was adjourned at noon.","会議は正午に休会となった。",["ad","journ"]],
+      ["agenda","議題","n","The next item on the agenda is the budget.","議題の次の項目は予算です。",["ag","enda"]],
+      ["consensus","合意","n","We finally reached a consensus.","ようやく合意に達した。",["con","sensus"]],
+      ["objection","異議","n","Are there any objections to this plan?","この案に異議はありますか。",["ob","ject","ion"]],
+      ["premise","前提","n","The plan is based on a false premise.","その計画は誤った前提に基づいている。",["pre","mise"]],
+      ["concession","譲歩","n","We made a small concession on price.","価格面で小さな譲歩をした。",["con","cess","ion"]],
+      ["deadlock","膠着状態","n","The talks ended in deadlock.","交渉は膠着状態に終わった。",["dead","lock"]],
+      ["minutes","議事録","n","Who will take the minutes today?","今日は誰が議事録を取りますか。"],
+      ["unanimous","全会一致の","adj","The board was unanimous in its decision.","取締役会の決定は全会一致だった。",["un","anim","ous"]],
+      ["contentious","議論を呼ぶ","adj","Pay raises are a contentious issue.","賃上げは議論を呼ぶ問題だ。",["con","tent","ious"]],
+      ["concise","簡潔な","adj","Keep your report concise.","報告は簡潔にしなさい。",["con","cise"]],
+      ["pending","保留中の","adj","The deal is still pending.","その取引はまだ保留中だ。",["pend","ing"]],
+      ["viable","実行可能な","adj","Is this plan commercially viable?","この計画は商業的に実行可能か。",["vi","able"]],
+      ["preliminary","予備の","adj","We held a preliminary meeting.","予備の打ち合わせを行った。",["pre","limin","ary"]]]),
+    mk("biz3","ビジネス英単語③ 財務・会計","💰",[
+      ["allocate","割り当てる","v","We allocated more budget to marketing.","マーケティングにより多くの予算を割り当てた。",["al","loc","ate"]],
+      ["audit","監査する","v","The accounts are audited every year.","帳簿は毎年監査される。",["aud","it"]],
+      ["depreciate","価値が下がる","v","Equipment depreciates over five years.","設備は5年かけて価値が下がる。",["de","preci","ate"]],
+      ["forecast","予測する","v","We forecast strong sales this quarter.","今四半期は好調な売上を予測している。",["fore","cast"]],
+      ["incur","（費用を）負担する","v","The project incurred heavy costs.","その事業は多額の費用を負担した。",["in","cur"]],
+      ["liquidate","清算する","v","The company was liquidated last year.","その会社は昨年清算された。",["liquid","ate"]],
+      ["asset","資産","n","Data is our most valuable asset.","データは当社の最も貴重な資産だ。",["as","set"]],
+      ["equity","自己資本","n","The firm raised equity from investors.","会社は投資家から自己資本を調達した。",["equ","ity"]],
+      ["dividend","配当","n","The company pays a quarterly dividend.","その会社は四半期ごとに配当を支払う。",["divid","end"]],
+      ["surplus","黒字・余剰","n","We recorded a trade surplus this year.","今年は貿易黒字を記録した。",["sur","plus"]],
+      ["deficit","赤字","n","The budget deficit is growing.","財政赤字が拡大している。",["de","ficit"]],
+      ["ledger","元帳","n","Record every expense in the ledger.","すべての経費を元帳に記録しなさい。"],
+      ["margin","利ざや","n","Profit margins are shrinking.","利ざやが縮小している。",["marg","in"]],
+      ["overhead","間接費","n","We must cut overhead costs.","間接費を削減しなければならない。",["over","head"]],
+      ["turnover","売上高","n","Annual turnover exceeded one million dollars.","年間売上高は100万ドルを超えた。",["turn","over"]],
+      ["fiscal","会計の","adj","The fiscal year ends in March.","会計年度は3月に終わる。",["fisc","al"]],
+      ["solvent","支払い能力のある","adj","The firm remains solvent despite losses.","損失にもかかわらず会社は支払い能力を保っている。",["solv","ent"]],
+      ["outstanding","未払いの","adj","Please settle the outstanding balance.","未払いの残高を清算してください。",["out","stand","ing"]],
+      ["gross","総額の","adj","Gross profit rose by five percent.","総利益は5％増加した。"],
+      ["negligible","ごくわずかな","adj","The impact on cost was negligible.","コストへの影響はごくわずかだった。",["neglig","ible"]]]),
+    mk("biz4","ビジネス英単語④ 人事・組織","👥",[
+      ["recruit","採用する","v","We are recruiting new engineers.","新しいエンジニアを採用している。",["re","cruit"]],
+      ["promote","昇進させる","v","She was promoted to manager.","彼女はマネージャーに昇進した。",["pro","mote"]],
+      ["resign","辞任する","v","The director resigned last month.","取締役は先月辞任した。",["re","sign"]],
+      ["supervise","監督する","v","He supervises a team of ten.","彼は10人のチームを監督している。",["super","vise"]],
+      ["mentor","指導する","v","Senior staff mentor the newcomers.","先輩社員が新人を指導する。"],
+      ["motivate","やる気にさせる","v","Good leaders motivate their teams.","良いリーダーはチームをやる気にさせる。",["motiv","ate"]],
+      ["subordinate","部下","n","He treats his subordinates with respect.","彼は部下に敬意を持って接する。",["sub","ordin","ate"]],
+      ["appraisal","人事評価","n","Annual appraisals are held in April.","人事評価は毎年4月に行われる。",["ap","prais","al"]],
+      ["tenure","在職期間","n","During her tenure, sales doubled.","彼女の在職期間中に売上は倍増した。",["ten","ure"]],
+      ["payroll","給与名簿","n","The company has 500 people on its payroll.","その会社の給与名簿には500人が載っている。",["pay","roll"]],
+      ["morale","士気","n","Team morale is high right now.","今チームの士気は高い。"],
+      ["incentive","報奨","n","Bonuses give staff an incentive to perform.","ボーナスは社員が成果を出す報奨になる。",["in","cent","ive"]],
+      ["hierarchy","階層組織","n","The company has a flat hierarchy.","その会社は階層の少ない組織だ。",["hier","archy"]],
+      ["vacancy","欠員","n","We have a vacancy in the sales team.","営業チームに欠員がある。",["vac","ancy"]],
+      ["compliance","法令順守","n","Compliance training is held every year.","法令順守の研修は毎年行われる。",["com","pli","ance"]],
+      ["competent","有能な","adj","She is a highly competent manager.","彼女は非常に有能なマネージャーだ。",["com","pet","ent"]],
+      ["diligent","勤勉な","adj","He is diligent about meeting deadlines.","彼は締め切りを守ることに勤勉だ。",["dilig","ent"]],
+      ["eligible","資格のある","adj","You are eligible for a bonus.","あなたはボーナスを受け取る資格がある。",["elig","ible"]],
+      ["probationary","試用期間中の","adj","New hires have a three-month probationary period.","新入社員には3か月の試用期間がある。",["probation","ary"]],
+      ["versatile","多才な","adj","She is a versatile employee.","彼女は多才な社員だ。",["vers","atile"]]]),
+    mk("biz5","ビジネス英単語⑤ 戦略・マーケ","🚩",[
+      ["penetrate","（市場に）参入する","v","We penetrated the Asian market.","アジア市場に参入した。",["penetr","ate"]],
+      ["differentiate","差別化する","v","Design differentiates us from competitors.","デザインが当社を競合と差別化している。",["differ","enti","ate"]],
+      ["launch","発売する","v","We will launch the new product in May.","5月に新製品を発売する。"],
+      ["diversify","多角化する","v","The firm diversified into software.","その会社はソフトウェア事業に多角化した。",["di","vers","ify"]],
+      ["capitalize","（機会を）生かす","v","We capitalized on the new trend.","新しい流行をうまく生かした。",["capital","ize"]],
+      ["consolidate","統合する","v","The two divisions were consolidated.","二つの部門は統合された。",["con","solid","ate"]],
+      ["niche","すき間市場","n","They found a profitable niche.","彼らは儲かるすき間市場を見つけた。"],
+      ["demographic","顧客層","n","Our target demographic is people in their twenties.","ターゲットの顧客層は20代だ。",["demo","graphic"]],
+      ["retention","顧客維持","n","Customer retention is our top priority.","顧客維持が最優先事項だ。",["re","tent","ion"]],
+      ["acquisition","買収","n","The acquisition was completed in June.","買収は6月に完了した。",["ac","quis","ition"]],
+      ["synergy","相乗効果","n","The merger created strong synergy.","合併は強い相乗効果を生んだ。",["syn","ergy"]],
+      ["benchmark","比較基準","n","We use rival firms as a benchmark.","競合他社を比較基準にしている。",["bench","mark"]],
+      ["outreach","働きかけ","n","Community outreach builds trust.","地域への働きかけが信頼を築く。",["out","reach"]],
+      ["foothold","足がかり","n","We gained a foothold in Europe.","欧州市場に足がかりを得た。",["foot","hold"]],
+      ["attrition","顧客離れ","n","Customer attrition rose last quarter.","前四半期に顧客離れが増えた。",["at","trit","ion"]],
+      ["scalable","拡張可能な","adj","The business model is highly scalable.","そのビジネスモデルは拡張性が高い。",["scal","able"]],
+      ["saturated","飽和した","adj","The smartphone market is saturated.","スマートフォン市場は飽和している。",["satur","ated"]],
+      ["cutting-edge","最先端の","adj","They use cutting-edge AI technology.","彼らは最先端のAI技術を使っている。"],
+      ["sustainable","持続可能な","adj","We aim for sustainable growth.","持続可能な成長を目指している。",["sus","tain","able"]],
+      ["disruptive","破壊的革新の","adj","It was a disruptive innovation.","それは破壊的なイノベーションだった。",["dis","rupt","ive"]]]),
     mk("capitals","世界の首都","🌍",[
       ["フランス","パリ"],["カナダ","オタワ"],["オーストラリア","キャンベラ"],
       ["ブラジル","ブラジリア"],["エジプト","カイロ"],["トルコ","アンカラ"],
