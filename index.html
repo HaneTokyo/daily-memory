@@ -337,7 +337,7 @@ body::after{
   </div>
   <div style="height:10px"></div>
   <button class="bigbtn ghost" id="btn-invite">🤝 友達を招待して記憶バトル</button>
-  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v2.4</p>
+  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v2.5</p>
 </div>
 
 <!-- ============ GAME ============ -->
@@ -394,6 +394,7 @@ body::after{
     <div class="rstat"><b id="r-best">0s</b><span>最速タイム ⚡</span></div>
   </div>
   <div class="cardresults" id="r-cards"></div>
+  <button class="bigbtn" id="btn-repeat" style="display:none">🔄 もう一度同じカードを繰り返す</button>
   <button class="bigbtn" id="btn-again">▶ 続けて次のカードへ</button>
   <button class="bigbtn ghost" id="btn-reverse" style="display:none">🔁 同じカードを「日本語 → 英語」で</button>
   <button class="bigbtn" id="btn-strengthen" style="display:none">🧠 記憶強化モード — 間違えた単語を画像と動画で</button>
@@ -1420,6 +1421,7 @@ function endGame(){
   $("r-best").textContent = (game.best||0).toFixed(1)+"s";
   // 直近セッションを保存（🔁日→英モード用）
   lastSession = {deckId: game.deckId, cards: game.graduated.map(it=>it.card), reverse: !!game.reverse};
+  $("btn-repeat").style.display = lastSession.cards.length>=3 ? "" : "none";
   $("btn-reverse").style.display = (!game.reverse && !game.challenge && lastSession.cards.length>=3) ? "" : "none";
   // 挑戦状用に直近の結果を保存
   lastResult = {score:game.score, avg:+avg.toFixed(1), acc,
@@ -2092,6 +2094,10 @@ $("btn-strengthen").addEventListener("click",()=>{
 $("btn-home").addEventListener("click",()=>{ renderHome(); show("scr-home"); });
 $("qcard").addEventListener("click",()=>{
   if(game && game.queue.length) speak(game.reverse ? game.queue[0].card.a : game.queue[0].card.q);
+});
+$("btn-repeat").addEventListener("click",()=>{
+  if(lastSession && lastSession.cards.length>=3)
+    startGame(lastSession.deckId, {cards: lastSession.cards, reverse: lastSession.reverse});
 });
 $("btn-reverse").addEventListener("click",()=>{
   if(lastSession && lastSession.cards.length>=3)
