@@ -335,7 +335,7 @@ body::after{
   </div>
   <div style="height:10px"></div>
   <button class="bigbtn ghost" id="btn-invite">🤝 友達を招待して記憶バトル</button>
-  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v2.1</p>
+  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v2.2</p>
 </div>
 
 <!-- ============ GAME ============ -->
@@ -600,6 +600,17 @@ builtinDecks().forEach(bd=>{
     else cur.cards.push(bc);
   });
 });
+// 旧「ビジネス英単語①〜⑤」を100語の統合デッキに移行（学習記録も引き継ぐ）
+["biz20","biz2","biz3","biz4","biz5"].forEach(oldId=>{
+  const old = state.decks.find(d=>d.id===oldId);
+  if(!old) return;
+  old.cards.forEach(c=>{
+    const oldKey = oldId + "|" + c.id, newKey = "biz100|" + c.id;
+    if(state.progress[oldKey] && !state.progress[newKey]) state.progress[newKey] = state.progress[oldKey];
+    delete state.progress[oldKey];
+  });
+  state.decks = state.decks.filter(d=>d.id!==oldId);
+});
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
 
 /* ---------------- Built-in decks ---------------- */
@@ -662,7 +673,7 @@ function builtinDecks(){
       ["plethora","過多","n","We have a plethora of options.","選択肢はあり余るほどある。",["pleth","ora"]],
       ["reprisal","報復","n","They feared reprisals from the regime.","彼らは政権からの報復を恐れた。",["re","pris","al"]],
       ["zenith","頂点","n","His career reached its zenith in 2020.","彼のキャリアは2020年に頂点に達した。",["ze","nith"]]]),
-    mk("biz20","ビジネス英単語① 基本","💼",[
+    mk("biz100","ビジネス英単語 100","💼",[
       ["leverage","活用する","v","We can leverage our brand to enter new markets.","ブランドを活用して新市場に参入できる。",["lever","age"]],
       ["streamline","効率化する","v","We streamlined the approval process.","承認プロセスを効率化した。",["stream","line"]],
       ["delegate","委任する","v","A good manager delegates tasks effectively.","良い管理職は仕事を上手に委任する。",["de","leg","ate"]],
@@ -682,8 +693,8 @@ function builtinDecks(){
       ["proprietary","独自の・専有の","adj","The software uses proprietary technology.","そのソフトは独自技術を使っている。",["propri","et","ary"]],
       ["tentative","暫定の","adj","We set a tentative schedule for the launch.","発売の暫定スケジュールを組んだ。",["tent","ative"]],
       ["confidential","機密の","adj","Please keep this information confidential.","この情報は機密扱いでお願いします。",["con","fid","ential"]],
-      ["mandatory","義務的な","adj","Attendance at the training is mandatory.","研修への出席は必須です。",["mand","atory"]]]),
-    mk("biz2","ビジネス英単語② 会議・交渉","🤝",[
+      ["mandatory","義務的な","adj","Attendance at the training is mandatory.","研修への出席は必須です。",["mand","atory"]],
+      
       ["negotiate","交渉する","v","We negotiated a better price with the vendor.","業者ともっと良い価格を交渉した。",["negoti","ate"]],
       ["postpone","延期する","v","The meeting was postponed until next week.","会議は来週に延期された。",["post","pone"]],
       ["clarify","明確にする","v","Could you clarify this point?","この点を明確にしてもらえますか。",["clar","ify"]],
@@ -703,8 +714,8 @@ function builtinDecks(){
       ["concise","簡潔な","adj","Keep your report concise.","報告は簡潔にしなさい。",["con","cise"]],
       ["pending","保留中の","adj","The deal is still pending.","その取引はまだ保留中だ。",["pend","ing"]],
       ["viable","実行可能な","adj","Is this plan commercially viable?","この計画は商業的に実行可能か。",["vi","able"]],
-      ["preliminary","予備の","adj","We held a preliminary meeting.","予備の打ち合わせを行った。",["pre","limin","ary"]]]),
-    mk("biz3","ビジネス英単語③ 財務・会計","💰",[
+      ["preliminary","予備の","adj","We held a preliminary meeting.","予備の打ち合わせを行った。",["pre","limin","ary"]],
+      
       ["allocate","割り当てる","v","We allocated more budget to marketing.","マーケティングにより多くの予算を割り当てた。",["al","loc","ate"]],
       ["audit","監査する","v","The accounts are audited every year.","帳簿は毎年監査される。",["aud","it"]],
       ["depreciate","価値が下がる","v","Equipment depreciates over five years.","設備は5年かけて価値が下がる。",["de","preci","ate"]],
@@ -724,8 +735,8 @@ function builtinDecks(){
       ["solvent","支払い能力のある","adj","The firm remains solvent despite losses.","損失にもかかわらず会社は支払い能力を保っている。",["solv","ent"]],
       ["outstanding","未払いの","adj","Please settle the outstanding balance.","未払いの残高を清算してください。",["out","stand","ing"]],
       ["gross","総額の","adj","Gross profit rose by five percent.","総利益は5％増加した。"],
-      ["negligible","ごくわずかな","adj","The impact on cost was negligible.","コストへの影響はごくわずかだった。",["neglig","ible"]]]),
-    mk("biz4","ビジネス英単語④ 人事・組織","👥",[
+      ["negligible","ごくわずかな","adj","The impact on cost was negligible.","コストへの影響はごくわずかだった。",["neglig","ible"]],
+      
       ["recruit","採用する","v","We are recruiting new engineers.","新しいエンジニアを採用している。",["re","cruit"]],
       ["promote","昇進させる","v","She was promoted to manager.","彼女はマネージャーに昇進した。",["pro","mote"]],
       ["resign","辞任する","v","The director resigned last month.","取締役は先月辞任した。",["re","sign"]],
@@ -745,8 +756,8 @@ function builtinDecks(){
       ["diligent","勤勉な","adj","He is diligent about meeting deadlines.","彼は締め切りを守ることに勤勉だ。",["dilig","ent"]],
       ["eligible","資格のある","adj","You are eligible for a bonus.","あなたはボーナスを受け取る資格がある。",["elig","ible"]],
       ["probationary","試用期間中の","adj","New hires have a three-month probationary period.","新入社員には3か月の試用期間がある。",["probation","ary"]],
-      ["versatile","多才な","adj","She is a versatile employee.","彼女は多才な社員だ。",["vers","atile"]]]),
-    mk("biz5","ビジネス英単語⑤ 戦略・マーケ","🚩",[
+      ["versatile","多才な","adj","She is a versatile employee.","彼女は多才な社員だ。",["vers","atile"]],
+      
       ["penetrate","（市場に）参入する","v","We penetrated the Asian market.","アジア市場に参入した。",["penetr","ate"]],
       ["differentiate","差別化する","v","Design differentiates us from competitors.","デザインが当社を競合と差別化している。",["differ","enti","ate"]],
       ["launch","発売する","v","We will launch the new product in May.","5月に新製品を発売する。"],
@@ -951,6 +962,11 @@ function startGame(deckId, opts){
   if(!deck || deck.cards.length < 3){ alert("このデッキには3枚以上のカードが必要です"); return; }
   const cards = shuffle(pickSessionCards(deck));
   if(!cards.length){ alert("このデッキのカードはすべて習得済み（😎知ってた）です！"); return; }
+  const _t = todayNum();
+  const _anyNew = deck.cards.some(c=>!state.progress[progKey(deck.id,c.id)]);
+  const _anyDue = deck.cards.some(c=>{const p=state.progress[progKey(deck.id,c.id)]; return p && !p.known && p.due<=_t;});
+  if(!_anyNew && !_anyDue && !(opts&&opts.challenge))
+    alert(`「${deck.name}」は全カード学習済み！🎉\n今日は総復習モードで遊びます（復習期限が来たカードは明日以降に登場します）`);
   game = {
     deckId,
     challenge: (opts && opts.challenge) || null,   // 挑戦状モード
