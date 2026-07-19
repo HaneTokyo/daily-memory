@@ -337,7 +337,7 @@ body::after{
   </div>
   <div style="height:10px"></div>
   <button class="bigbtn ghost" id="btn-invite">🤝 友達を招待して記憶バトル</button>
-  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v2.3</p>
+  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v2.4</p>
 </div>
 
 <!-- ============ GAME ============ -->
@@ -395,6 +395,7 @@ body::after{
   </div>
   <div class="cardresults" id="r-cards"></div>
   <button class="bigbtn" id="btn-again">▶ 続けて次のカードへ</button>
+  <button class="bigbtn ghost" id="btn-reverse" style="display:none">🔁 同じカードを「日本語 → 英語」で</button>
   <button class="bigbtn" id="btn-strengthen" style="display:none">🧠 記憶強化モード — 間違えた単語を画像と動画で</button>
   <button class="bigbtn ghost" id="btn-challenge">⚔️ この結果で友達に挑戦状を送る</button>
   <button class="bigbtn ghost" id="btn-home">ホームに戻る</button>
@@ -962,15 +963,18 @@ function pickSessionCards(deck){
 function startGame(deckId, opts){
   const deck = getDeck(deckId);
   if(!deck || deck.cards.length < 3){ alert("このデッキには3枚以上のカードが必要です"); return; }
-  const cards = shuffle(pickSessionCards(deck));
+  const cards = (opts && opts.cards) ? shuffle(opts.cards.slice()) : shuffle(pickSessionCards(deck));
   if(!cards.length){ alert("このデッキのカードはすべて習得済み（😎知ってた）です！"); return; }
-  const _t = todayNum();
-  const _anyNew = deck.cards.some(c=>!state.progress[progKey(deck.id,c.id)]);
-  const _anyDue = deck.cards.some(c=>{const p=state.progress[progKey(deck.id,c.id)]; return p && !p.known && p.due<=_t;});
-  if(!_anyNew && !_anyDue && !(opts&&opts.challenge))
-    alert(`「${deck.name}」は全カード学習済み！🎉\n今日は総復習モードで遊びます（復習期限が来たカードは明日以降に登場します）`);
+  if(!(opts && (opts.cards || opts.challenge))){
+    const _t = todayNum();
+    const _anyNew = deck.cards.some(c=>!state.progress[progKey(deck.id,c.id)]);
+    const _anyDue = deck.cards.some(c=>{const p=state.progress[progKey(deck.id,c.id)]; return p && !p.known && p.due<=_t;});
+    if(!_anyNew && !_anyDue)
+      alert(`「${deck.name}」は全カード学習済み！🎉\n今日は総復習モードで遊びます（復習期限が来たカードは明日以降に登場します）`);
+  }
   game = {
     deckId,
+    reverse: !!(opts && opts.reverse),             // 🔁 日本語→英語モード
     challenge: (opts && opts.challenge) || null,   // 挑戦状モード
     queue: cards.map(c=>({card:c, successes:0, errors:0, times:[], track:"normal", asked:false, known:false})),
     total: cards.length,
@@ -999,6 +1003,24 @@ const DISTRACTOR_POOL = {
 function distractors(item){
   const card = item.card;
   const deck = getDeck(game.deckId);
+  // 🔁 日→英モード: 選択肢は同じ品詞の英単語から
+  if(game.reverse){
+    let cands = deck.cards
+      .filter(c=>c.id!==card.id && c.q!==card.q && (!card.cat || !c.cat || c.cat===card.cat))
+      .map(c=>c.q);
+    cands = [...new Set(cands)];
+    item.seen = item.seen || [];
+    let fresh = cands.filter(q=>!item.seen.includes(q));
+    if(fresh.length < 2){ item.seen = []; fresh = cands.slice(); }
+    const picked = shuffle(fresh).slice(0,2);
+    if(picked.length < 2){
+      shuffle(deck.cards.map(c=>c.q).filter(q=>q!==card.q)).forEach(q=>{
+        if(picked.length<2 && !picked.includes(q)) picked.push(q);
+      });
+    }
+    picked.forEach(q=>item.seen.push(q));
+    return picked;
+  }
   // candidates from the deck: same part of speech when known
   let cands = deck.cards
     .filter(c=>c.id!==card.id && c.a!==card.a && (!card.cat || !c.cat || c.cat===card.cat))
@@ -1034,18 +1056,19 @@ function nextQuestion(){
   const item = game.queue[0];
   const qc = $("qcard");
   qc.classList.remove("slidein"); void qc.offsetWidth; qc.classList.add("slidein");
-  $("qtext").textContent = item.card.q;
+  $("qtext").textContent = game.reverse ? item.card.a : item.card.q;
   $("gprogress").style.width = gameProgress()+"%";
   $("gscore").textContent = game.score;
   $("gcombo").textContent = game.combo>=2 ? "🔥 COMBO ×"+game.combo : "";
   $("feedback").innerHTML = "";
-  // choices
-  const opts = shuffle([item.card.a, ...distractors(item)]);
+  // choices（🔁日→英モードでは英単語が選択肢になる）
+  const correctText = game.reverse ? item.card.q : item.card.a;
+  const opts = shuffle([correctText, ...distractors(item)]);
   const box = $("choices"); box.innerHTML="";
   opts.forEach(a=>{
     const b = document.createElement("button");
     b.className="choice"; b.textContent = a;
-    b.addEventListener("click",()=>answer(b, a===item.card.a));
+    b.addEventListener("click",()=>answer(b, a===correctText));
     box.appendChild(b);
   });
   // timer
@@ -1057,7 +1080,7 @@ function nextQuestion(){
     $("gtimer").textContent = t.toFixed(1)+"s";
     fill.style.width = Math.max(0, 100 - (t/8)*100) + "%";
   }, 100);
-  speak(item.card.q);
+  speak(game.reverse ? item.card.a : item.card.q);
 }
 
 function insertAfter(item, n){   // 「n個あと」= 今からn問目として再登場
@@ -1105,8 +1128,9 @@ function answer(btn, correct){
     btn.classList.add("wrong");
     sndBad();
     // reveal the correct one
-    buttons.forEach(b=>{ if(b.textContent===item.card.a) b.classList.add("reveal"); });
-    $("feedback").innerHTML = `<span class="bad">正解は「${esc(item.card.a)}」</span>`;
+    const correctText = game.reverse ? item.card.q : item.card.a;
+    buttons.forEach(b=>{ if(b.textContent===correctText) b.classList.add("reveal"); });
+    $("feedback").innerHTML = `<span class="bad">正解は「${esc(correctText)}」</span>`;
     insertAfter(item, 2);   // 2個あとに選択肢を変えて再出題
     setTimeout(()=>startDrill(item), 900);   // 正解を3回連続で覚え込むドリルへ
   }
@@ -1394,6 +1418,9 @@ function endGame(){
   $("r-acc").textContent = acc+"%";
   $("r-avg").textContent = avg.toFixed(1)+"s";
   $("r-best").textContent = (game.best||0).toFixed(1)+"s";
+  // 直近セッションを保存（🔁日→英モード用）
+  lastSession = {deckId: game.deckId, cards: game.graduated.map(it=>it.card), reverse: !!game.reverse};
+  $("btn-reverse").style.display = (!game.reverse && !game.challenge && lastSession.cards.length>=3) ? "" : "none";
   // 挑戦状用に直近の結果を保存
   lastResult = {score:game.score, avg:+avg.toFixed(1), acc,
     deckName:(getDeck(game.deckId)||{}).name||"デッキ",
@@ -1408,7 +1435,8 @@ function endGame(){
   }else{
     $("r-emoji").textContent = acc>=90 ? "🏆" : acc>=70 ? "🎉" : "💪";
     $("r-title").textContent = acc>=90 ? "パーフェクトに近い！" : acc>=70 ? "クリア！" : "よくがんばった！";
-    $("r-sub").textContent = `${game.total}枚のカードを習得 — 間隔を空けて復習すると長期記憶に定着します`;
+    $("r-sub").textContent = (game.reverse ? "🔁 日本語→英語モード ─ " : "")
+      + `${game.total}枚のカードを習得 — 間隔を空けて復習すると長期記憶に定着します`;
     $("btn-challenge").textContent = "⚔️ この結果で友達に挑戦状を送る";
   }
   const list = $("r-cards"); list.innerHTML="";
@@ -2063,7 +2091,11 @@ $("btn-strengthen").addEventListener("click",()=>{
 });
 $("btn-home").addEventListener("click",()=>{ renderHome(); show("scr-home"); });
 $("qcard").addEventListener("click",()=>{
-  if(game && game.queue.length) speak(game.queue[0].card.q);
+  if(game && game.queue.length) speak(game.reverse ? game.queue[0].card.a : game.queue[0].card.q);
+});
+$("btn-reverse").addEventListener("click",()=>{
+  if(lastSession && lastSession.cards.length>=3)
+    startGame(lastSession.deckId, {reverse:true, cards:lastSession.cards});
 });
 
 /* ================================================================
@@ -2072,7 +2104,7 @@ $("qcard").addEventListener("click",()=>{
 const APP_URL = location.protocol.startsWith("http")
   ? location.origin + location.pathname
   : "https://hanetokyo.github.io/daily-memory/";
-let lastResult = null, pendingChallenge = null;
+let lastResult = null, pendingChallenge = null, lastSession = null;
 
 function b64enc(obj){
   return btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
