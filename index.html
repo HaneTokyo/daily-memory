@@ -129,7 +129,9 @@ body::after{
 .feedback span{display:inline-block;animation:floatUp 1s ease forwards;}
 .drill-pair{text-align:center;font-size:28px;font-weight:800;padding:10px 6px;word-break:break-word;}
 .drill-pair.pulse{animation:pop .5s ease;}
-.wpart{transition:color .35s ease, opacity .35s ease;}
+.wpart{display:inline-block;transition:color .35s ease, opacity .35s ease, transform .3s cubic-bezier(.2,1.6,.4,1);}
+#drill-parts{line-height:1.9;white-space:normal;}
+#drill-parts small{color:var(--sub);font-size:11px;font-weight:600;}
 .drill-ex{text-align:center;padding:2px 10px 10px;line-height:1.6;}
 .drill-ex .en{font-size:17px;font-weight:600;}
 .drill-ex .en mark{background:none;color:var(--accent);font-weight:800;}
@@ -335,7 +337,7 @@ body::after{
   </div>
   <div style="height:10px"></div>
   <button class="bigbtn ghost" id="btn-invite">🤝 友達を招待して記憶バトル</button>
-  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v2.2</p>
+  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v2.3</p>
 </div>
 
 <!-- ============ GAME ============ -->
@@ -362,7 +364,7 @@ body::after{
     <div class="drill-pair" id="drill-pair">
       <span id="drill-a"></span><span style="color:var(--sub)"> → </span><span id="drill-q" style="color:var(--accent)"></span>
     </div>
-    <p id="drill-parts" style="text-align:center;color:var(--sub);font-size:14px;font-weight:700;letter-spacing:1px;margin:2px 0 8px"></p>
+    <p id="drill-parts" style="text-align:center;color:var(--text);font-size:14px;font-weight:700;letter-spacing:.5px;margin:2px 8px 8px"></p>
     <div class="drill-ex" id="drill-ex"></div>
     <div class="row">
       <button class="bigbtn ghost" id="drill-visual">🎬 動画で覚える</button>
@@ -392,9 +394,9 @@ body::after{
     <div class="rstat"><b id="r-best">0s</b><span>最速タイム ⚡</span></div>
   </div>
   <div class="cardresults" id="r-cards"></div>
-  <button class="bigbtn" id="btn-strengthen" style="display:none">🧠 記憶強化モード — 間違えた単語を画像と動画で</button>
-  <button class="bigbtn" id="btn-challenge">⚔️ この結果で友達に挑戦状を送る</button>
   <button class="bigbtn" id="btn-again">▶ 続けて次のカードへ</button>
+  <button class="bigbtn" id="btn-strengthen" style="display:none">🧠 記憶強化モード — 間違えた単語を画像と動画で</button>
+  <button class="bigbtn ghost" id="btn-challenge">⚔️ この結果で友達に挑戦状を送る</button>
   <button class="bigbtn ghost" id="btn-home">ホームに戻る</button>
 </div>
 
@@ -1143,6 +1145,53 @@ function getParts(card){
   return out.length > 1 ? out : [card.q];
 }
 const PART_COLORS = ["#6c8cff","#ffcf5c","#2dd4a0","#ff8cc8","#9b6cff"];
+/* 語源パーツの意味辞書 — 「なぜその言葉になったのか」を一行で見せる */
+const ETYM_GLOSS = {
+  // 接頭辞
+  a:"〜へ", ab:"離れて", ac:"〜へ", ad:"〜へ", al:"〜へ", ap:"〜へ", as:"〜へ", at:"〜へ",
+  co:"共に", com:"共に", con:"共に", cor:"共に", counter:"対抗して", de:"下へ・離れて",
+  di:"分けて", dif:"離れて", dis:"離れて", e:"外へ", ex:"外へ", en:"中に", ep:"上に", epi:"上に",
+  fore:"前もって", im:"中へ/否定", in:"中へ/否定", inter:"間に", mis:"誤って",
+  ob:"〜に向かって", oc:"〜に向かって", out:"外へ・超えて", over:"上に・過剰に",
+  per:"完全に・通して", post:"後に", pre:"前に", pro:"前へ・前もって", re:"再び・後ろへ",
+  se:"離れて", sub:"下に", suc:"下に", suf:"下に", sug:"下から", sup:"下に", super:"上から",
+  sur:"上に・超えて", syn:"共に", sym:"共に", trans:"越えて", un:"否定", under:"下に", up:"上へ",
+  // 接尾辞
+  able:"〜できる", ible:"〜できる", age:"名詞化", ance:"名詞化", ancy:"名詞化", ary:"〜に関する",
+  ate:"〜にする", ated:"〜された", ation:"名詞化", atile:"〜しやすい", ative:"〜の性質",
+  atory:"〜の性質", end:"名詞化", ent:"〜する性質", ential:"〜の性質", ery:"名詞化",
+  ify:"〜化する", ing:"〜している", ion:"名詞化", ious:"〜に満ちた", ise:"〜化する",
+  ition:"名詞化", ity:"名詞化", ive:"〜の性質", ize:"〜化する", less:"〜がない", ly:"（副詞）",
+  ment:"名詞化・〜すること", ness:"名詞化", ora:"名詞化", ory:"〜の性質", ous:"〜に満ちた",
+  tion:"名詞化", ure:"名詞化", ial:"〜の", tic:"〜的", mony:"状態",
+  // 語根（ラテン語・ギリシャ語など）
+  lever:"てこ", stream:"流れ", line:"一直線", leg:"任せる·派遣", ped:"足", source:"源",
+  burse:"財布", cure:"世話・手配", venue:"来るもの", stake:"賭け金", holder:"持つ人",
+  muner:"報酬・贈り物", abil:"できること", dund:"あふれる", voice:"声→通知",
+  lucr:"利益", feas:"行う", propri:"自分のもの", tent:"保つ・張る", fid:"信頼",
+  negoti:"商い", pone:"置く", clar:"明らか", facilit:"容易", promise:"約束",
+  suade:"勧める", journ:"一日", ag:"行う", enda:"すべきこと", sensus:"感じること",
+  ject:"投げる", mise:"置く・送る", cess:"進む・譲る", dead:"動かない", lock:"錠",
+  anim:"心", cise:"切る", pend:"ぶら下がる", vi:"道", limin:"敷居・入口",
+  loc:"場所", aud:"聞く", it:"行く", preci:"価格", cast:"投げる", cur:"走る",
+  liquid:"液体→現金", set:"置かれた物", equ:"等しい", divid:"分ける", plus:"より多く",
+  ficit:"作る・果たす", marg:"へり・縁", head:"頭・上部", turn:"回る", fisc:"国庫",
+  solv:"解く・支払う", stand:"立つ", neglig:"顧みない", cruit:"新しく育つ", mote:"動かす",
+  sign:"印", vise:"見る", motiv:"動かす", ordin:"順序", prais:"値をつける", ten:"保つ",
+  pay:"支払う", roll:"名簿", cent:"駆り立てる歌", pli:"折る・従う", pet:"求める",
+  dilig:"選び抜く", elig:"選ぶ", probation:"試すこと", vers:"回る・変わる",
+  penetr:"貫く", differ:"異なる", capital:"資本・頭", solid:"固い", demo:"民衆",
+  graphic:"描く", quis:"求める", ergy:"働き", bench:"作業台", mark:"印", reach:"届く",
+  foot:"足", hold:"つかむ", trit:"すり減らす", scal:"はしご・段階", satur:"満たす",
+  tain:"保つ", sus:"下から支える", rupt:"破る", levi:"軽い", capit:"頭", robor:"力・樫の木",
+  semin:"種", tol:"持ち上げる", liter:"文字", scrutin:"くまなく探す", vindic:"権利を主張",
+  ubi:"どこにでも", quit:"ある", hemer:"一日", metic:"恐れ", clan:"ひそかに",
+  pragma:"行為・実務", aci:"鋭さ", funct:"果たす", quint:"第五の", essent:"本質",
+  vener:"敬う", auster:"厳しい", bacle:"障害物", tome:"切り取ったもの", hege:"導く",
+  passe:"通る", pan:"すべて", acea:"治療", pleth:"満ちる", pris:"つかむ",
+  chieve:"頭→成し遂げる", curi:"注意・関心", cline:"傾く", pand:"広げる", mand:"命じる",
+  estim:"評価する", void:"空", gest:"運ぶ"
+};
 /* パーツに順番に色を灯す: 全部消灯 → ob → +liter → +ate → 全点灯キープ → 繰り返し */
 function startPartsAnim(){
   clearInterval(partsInt);
@@ -1154,8 +1203,10 @@ function startPartsAnim(){
     const k = step % cycle;
     spans.forEach((s,i)=>{
       const lit = (k===cycle-1) || (k > i);   // 最後のステップは全点灯キープ
+      const newest = (k-1 === i);             // いま灯ったパーツは大きく弾む
       s.style.color = lit ? PART_COLORS[i % PART_COLORS.length] : "";
       s.style.opacity = lit ? 1 : .35;
+      s.style.transform = newest ? "scale(1.35) translateY(-3px)" : "scale(1)";
     });
     step++;
   };
@@ -1207,7 +1258,13 @@ function startDrill(item){
   const wparts = getParts(card);
   if(wparts.length > 1){
     $("drill-q").innerHTML = wparts.map(p=>`<span class="wpart">${esc(p)}</span>`).join("");
-    $("drill-parts").textContent = wparts.join(" + ");
+    // 語源解説: pro（前へ）＋ cure（世話・手配）＋ ment（名詞化）→「調達」
+    $("drill-parts").innerHTML = wparts.map((p,i)=>{
+      const g = ETYM_GLOSS[p.toLowerCase()];
+      return `<span style="color:${PART_COLORS[i%PART_COLORS.length]};font-weight:800">${esc(p)}</span>`
+        + (g ? `<small>（${esc(g)}）</small>` : "");
+    }).join(`<span style="opacity:.45"> ＋ </span>`)
+      + `<span style="opacity:.75">　→「${esc(card.a)}」</span>`;
   }else{
     $("drill-q").textContent = card.q;
     $("drill-parts").textContent = "";
