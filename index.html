@@ -335,7 +335,7 @@ body::after{
   </div>
   <div style="height:10px"></div>
   <button class="bigbtn ghost" id="btn-invite">🤝 友達を招待して記憶バトル</button>
-  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v1.9</p>
+  <p style="text-align:center;color:var(--sub);font-size:11px;margin-top:18px;opacity:.7">Daily Memory v2.0</p>
 </div>
 
 <!-- ============ GAME ============ -->
@@ -918,7 +918,7 @@ function renderHome(){
               successes>=4 -> graduated (leaves queue)
    - wrong:   errors++, successes=0, reinsert at front (repeat next)
 ================================================================ */
-const SESSION_SIZE = 8;  // known words leave instantly, so games stay short
+const SESSION_SIZE = 7;  // 1ゲーム = 新規7枚
 const FAST_T = 2.0;      // 「即答」とみなす秒数
 let game = null;
 let qStart = 0, timerInt = null;
@@ -933,9 +933,12 @@ function pickSessionCards(deck){
   const nw   = shuffle(withMeta.filter(x=>x.isNew));
   const rest = shuffle(withMeta.filter(x=>!x.isNew && !x.isDue))
                .sort((a,b)=>(a.p.due||0)-(b.p.due||0));
-  // 新規・復習カードがある限り、学習済みカードで埋めない（同じ単語ばかり感の防止）
-  let pick = due.concat(nw);
-  if(pick.length === 0) pick = rest;   // 全部習得済み → 総復習モード
+  // 1ゲーム = その日の新規カード7枚（復習カードは混ぜない）
+  // 新規が尽きたら復習期限のカード、それも無ければ総復習
+  let pick;
+  if(nw.length) pick = nw;
+  else if(due.length) pick = due;
+  else pick = rest;
   return pick.slice(0, SESSION_SIZE).map(x=>x.c);
 }
 
